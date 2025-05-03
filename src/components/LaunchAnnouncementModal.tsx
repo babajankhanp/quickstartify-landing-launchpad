@@ -11,7 +11,7 @@ export function LaunchAnnouncementModal() {
     // Set a timer to open the modal after 5 seconds
     const timer = setTimeout(() => {
       setIsOpen(true);
-    }, 5000);
+    }, 2000);
 
     // Clean up the timer when component unmounts
     return () => clearTimeout(timer);
@@ -35,7 +35,7 @@ export function LaunchAnnouncementModal() {
           
           <div className="mt-4">
             <p className="font-medium">Reach Out to Babajan Patan</p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mt-3">
+            <div className="flex flex-col gap-3 justify-center mt-3">
               <Button variant="outline" className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
                 <span>babajank98@gmail.com</span>
