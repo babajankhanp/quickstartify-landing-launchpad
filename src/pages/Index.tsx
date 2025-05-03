@@ -9,6 +9,7 @@ import { PricingSection } from "@/components/PricingSection";
 import { TestimonialsSection } from "@/components/TestimonialsSection";
 import { FinalCTA } from "@/components/FinalCTA";
 import { Footer } from "@/components/Footer";
+import { LaunchAnnouncementModal } from "@/components/LaunchAnnouncementModal";
 
 const Index = () => {
   return (
@@ -25,6 +26,7 @@ const Index = () => {
         <FinalCTA />
       </main>
       <Footer />
+      <LaunchAnnouncementModal />
     </div>
   );
 };
