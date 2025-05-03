@@ -27,7 +27,7 @@ export function LaunchAnnouncementModal() {
         </DialogHeader>
         
         <div className="space-y-4 py-4 text-center">
-          <p className="text-lg">Still In Ideation Phase</p>
+          <p className="text-lg">Still We brewing </p>
           <div className="bg-quickstartify-purple/10 p-4 rounded-lg">
             <h3 className="font-semibold text-quickstartify-purple">Looking for Rockstar Founding Team</h3>
             <p className="font-medium mt-1">(Backend Engineer)</p>
@@ -38,7 +38,7 @@ export function LaunchAnnouncementModal() {
             <div className="flex flex-col gap-3 justify-center mt-3">
               <Button variant="outline" className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                <span>babajank98@gmail.com</span>
+                <a href="mailto:babajank98@gmail.com"><span>babajank98@gmail.com</span></a>
               </Button>
               <Button variant="outline" className="flex items-center gap-2" asChild>
                 <a href="https://www.linkedin.com/in/babajan-patan" target="_blank" rel="noreferrer">
