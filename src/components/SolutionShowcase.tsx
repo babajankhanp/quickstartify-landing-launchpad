@@ -1,8 +1,35 @@
 
-import { Check, Zap, Rocket } from "lucide-react";
+import { Check, Zap, Rocket, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
 
 export function SolutionShowcase() {
+  const [activeBlock, setActiveBlock] = useState(0);
+  const [isAdding, setIsAdding] = useState(false);
+  
+  const flowElements = [
+    "Welcome Modal", 
+    "Feature Tooltip", 
+    "Hotspot", 
+    "Progress Bar", 
+    "Success Dialog"
+  ];
+  
+  // Animation to cycle through adding different onboarding elements
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIsAdding(true);
+      
+      // Reset the adding animation after a short delay
+      setTimeout(() => {
+        setIsAdding(false);
+        setActiveBlock((prev) => (prev + 1) % flowElements.length);
+      }, 800);
+    }, 3000);
+    
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <section id="solution" className="section relative overflow-hidden">
       <div className="container">
@@ -61,9 +88,16 @@ export function SolutionShowcase() {
                   <div className="w-1/3 bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
                     <div className="text-xs font-medium mb-3">Flow Elements</div>
                     <div className="space-y-2">
-                      {["Welcome Modal", "Feature Tooltip", "Hotspot", "Progress Bar", "Success Dialog"].map((item, i) => (
-                        <div key={i} className="bg-white dark:bg-gray-600 p-2 rounded text-xs flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-quickstartify-purple"></div>
+                      {flowElements.map((item, i) => (
+                        <div 
+                          key={i} 
+                          className={`bg-white dark:bg-gray-600 p-2 rounded text-xs flex items-center gap-2 transition-all duration-300 ${
+                            activeBlock === i ? "bg-quickstartify-purple/10 dark:bg-quickstartify-purple/20 border border-quickstartify-purple/30" : ""
+                          }`}
+                        >
+                          <div className={`w-3 h-3 rounded-full ${
+                            activeBlock === i ? "bg-quickstartify-purple animate-pulse" : "bg-quickstartify-purple/50"
+                          }`}></div>
                           {item}
                         </div>
                       ))}
@@ -73,6 +107,7 @@ export function SolutionShowcase() {
                   {/* Flow builder canvas */}
                   <div className="w-2/3 p-3">
                     <div className="bg-gray-50 dark:bg-gray-700 rounded-lg h-full p-4 relative">
+                      {/* Central modal */}
                       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-40 h-28 bg-white dark:bg-gray-800 rounded border border-quickstartify-purple shadow-lg">
                         <div className="h-6 bg-quickstartify-purple rounded-t flex items-center justify-between px-2">
                           <span className="text-white text-[8px]">Welcome</span>
@@ -85,12 +120,56 @@ export function SolutionShowcase() {
                         </div>
                       </div>
                       
-                      {/* Connection lines */}
-                      <div className="absolute top-1/4 right-1/4 w-16 h-12 border border-gray-300 dark:border-gray-500 rounded"></div>
-                      <div className="absolute bottom-1/4 left-1/3 w-20 h-10 border border-gray-300 dark:border-gray-500 rounded"></div>
+                      {/* Add block animation */}
+                      {isAdding && (
+                        <div className="absolute top-1/2 left-1/3 animate-fade-in-delayed">
+                          <div className="flex items-center">
+                            <div className="h-8 w-8 rounded-full bg-quickstartify-purple/80 flex items-center justify-center">
+                              <Plus className="h-4 w-4 text-white" />
+                            </div>
+                            <div className="h-0.5 w-12 bg-quickstartify-purple/60"></div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Connection nodes and blocks */}
+                      <div className={`absolute ${isAdding ? "animate-fade-in" : ""} top-1/4 right-1/4 w-16 h-12 border border-gray-300 dark:border-gray-500 rounded bg-white/80 dark:bg-gray-800/80 shadow-sm flex items-center justify-center`}>
+                        <div className="h-1.5 w-10 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                      </div>
+                      
+                      <div className={`absolute ${activeBlock > 2 ? "animate-fade-in" : "opacity-0"} bottom-1/4 left-1/3 w-20 h-10 border border-gray-300 dark:border-gray-500 rounded bg-white/80 dark:bg-gray-800/80 shadow-sm flex items-center justify-center`}>
+                        <div className="h-1.5 w-12 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                      </div>
+                      
+                      {/* Animated connection lines */}
+                      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: -1 }}>
+                        <path 
+                          d="M120,80 C150,100 180,120 210,100" 
+                          stroke="rgb(139,92,246)" 
+                          strokeWidth="1.5" 
+                          strokeDasharray="4 2"
+                          fill="none"
+                          className={`${activeBlock === 1 ? "animate-pulse-slow" : "opacity-40"}`}
+                        />
+                        
+                        <path 
+                          d="M100,140 C120,170 150,180 180,150" 
+                          stroke="rgb(139,92,246)" 
+                          strokeWidth="1.5" 
+                          strokeDasharray="4 2"
+                          fill="none"
+                          className={`${activeBlock === 3 ? "animate-pulse-slow" : "opacity-40"}`}
+                        />
+                      </svg>
                     </div>
                   </div>
                 </div>
+              </div>
+              
+              {/* Floating microcopy pointing to the flow builder */}
+              <div className="absolute bottom-4 right-4 bg-quickstartify-purple/90 text-white text-xs p-2 rounded-lg shadow-md animate-float">
+                Add elements with no-code!
+                <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 border-l-[6px] border-r-[6px] border-b-[6px] border-l-transparent border-r-transparent border-b-quickstartify-purple/90"></div>
               </div>
             </div>
           </div>
