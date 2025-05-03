@@ -33,11 +33,11 @@ export function Navbar() {
       <div className="container flex items-center justify-between">
         <a href="/" className="flex items-center gap-2">
           <img 
-            src="/lovable-uploads/d047f3cd-5b10-4d9b-af66-71ccc390c5df.png" 
+            src="/lovable-uploads/d02cfa79-8cbd-421b-b578-b52d1d908b1e.png" 
             alt="QuickStartify Logo" 
             className="h-8 md:h-10 w-auto" 
           />
-          <span className="text-xl md:text-2xl font-bold">
+          <span className="text-xl md:text-2xl font-bold text-quickstartify-purple">
             QuickStartify
           </span>
         </a>
