@@ -3,12 +3,22 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function LaunchAnnouncementBanner() {
   const [isVisible, setIsVisible] = useState(true);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   if (!isVisible) return null;
+
+  const handleAction = () => {
+    if (user) {
+      navigate('/dashboard');
+    } else {
+      navigate('/auth');
+    }
+  };
 
   return (
     <div className="bg-quickstartify-purple text-white w-full py-2 md:py-3 px-4 md:px-6">
@@ -23,9 +33,9 @@ export function LaunchAnnouncementBanner() {
             size="sm" 
             variant="outline" 
             className="h-7 text-xs border-white text-white hover:bg-white hover:text-quickstartify-purple"
-            onClick={() => navigate('/auth')}
+            onClick={handleAction}
           >
-            Try It Now
+            {user ? 'Go to Dashboard' : 'Try It Now'}
           </Button>
           <button
             onClick={() => setIsVisible(false)}
