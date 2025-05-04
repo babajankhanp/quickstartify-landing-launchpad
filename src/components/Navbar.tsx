@@ -2,11 +2,15 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { Menu } from "lucide-react";
+import { Menu, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -21,6 +25,45 @@ export function Navbar() {
       document.removeEventListener("scroll", handleScroll);
     };
   }, [scrolled]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  const authButtons = user ? (
+    <>
+      <Button 
+        onClick={() => navigate("/dashboard")} 
+        variant="outline" 
+        size="sm"
+      >
+        Dashboard
+      </Button>
+      <Button 
+        onClick={handleSignOut} 
+        size="sm"
+      >
+        <LogOut className="h-4 w-4 mr-1" /> Sign Out
+      </Button>
+    </>
+  ) : (
+    <>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={() => navigate("/auth")}
+      >
+        Log in
+      </Button>
+      <Button 
+        size="sm"
+        onClick={() => navigate("/auth?tab=register")}
+      >
+        Sign Up
+      </Button>
+    </>
+  );
 
   return (
     <nav
@@ -57,10 +100,7 @@ export function Navbar() {
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <Button variant="outline" size="sm">
-              Log in
-            </Button>
-            <Button size="sm">Start Free</Button>
+            {authButtons}
           </div>
         </div>
 
@@ -92,12 +132,51 @@ export function Navbar() {
               Pricing
             </a>
             <div className="pt-2 flex flex-col gap-2">
-              <Button variant="outline" className="w-full" onClick={() => setMobileMenuOpen(false)}>
-                Log in
-              </Button>
-              <Button className="w-full" onClick={() => setMobileMenuOpen(false)}>
-                Start Free
-              </Button>
+              {user ? (
+                <>
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={() => {
+                      navigate("/dashboard");
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    Dashboard
+                  </Button>
+                  <Button 
+                    className="w-full" 
+                    onClick={() => {
+                      handleSignOut();
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <LogOut className="mr-2 h-4 w-4" /> Sign Out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={() => {
+                      navigate("/auth");
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    Log in
+                  </Button>
+                  <Button 
+                    className="w-full" 
+                    onClick={() => {
+                      navigate("/auth?tab=register");
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    Sign Up
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

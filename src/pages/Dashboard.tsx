@@ -1,16 +1,18 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Flow } from "@/integrations/supabase/models";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Dashboard = () => {
   const [flows, setFlows] = useState<Flow[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     async function fetchFlows() {
@@ -36,17 +38,49 @@ const Dashboard = () => {
     fetchFlows();
   }, []);
 
-  const handleCreateFlow = () => {
-    navigate('/flow/new');
+  const handleCreateFlow = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('flows')
+        .insert({
+          title: 'New Flow',
+          description: '',
+          is_draft: true,
+          is_active: false,
+          user_id: user!.id
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      navigate(`/flow/${data.id}`);
+    } catch (error: any) {
+      toast({
+        title: "Error creating flow",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
   };
 
   return (
     <div className="container py-8">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Your Onboarding Flows</h1>
-        <Button onClick={handleCreateFlow} className="bg-quickstartify-purple hover:bg-quickstartify-purple/90">
-          <Plus className="mr-2 h-4 w-4" /> Create New Flow
-        </Button>
+        <div className="flex gap-4">
+          <Button onClick={handleCreateFlow} className="bg-quickstartify-purple hover:bg-quickstartify-purple/90">
+            <Plus className="mr-2 h-4 w-4" /> Create New Flow
+          </Button>
+          <Button variant="outline" onClick={handleSignOut}>
+            <LogOut className="mr-2 h-4 w-4" /> Sign Out
+          </Button>
+        </div>
       </div>
 
       {loading ? (

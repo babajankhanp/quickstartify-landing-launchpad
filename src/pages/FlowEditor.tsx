@@ -6,10 +6,12 @@ import { ArrowLeft, Save, Play, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Flow, FlowStep } from "@/integrations/supabase/models";
+import { useAuth } from "@/contexts/AuthContext";
 
 const FlowEditor = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const isNew = id === "new";
   
   const [flow, setFlow] = useState<Flow | null>(null);
@@ -32,7 +34,7 @@ const FlowEditor = () => {
         
         if (flowError) throw flowError;
         
-        setFlow(flowData);
+        setFlow(flowData as Flow);
         setTitle(flowData.title);
         setDescription(flowData.description || "");
         
@@ -44,7 +46,14 @@ const FlowEditor = () => {
           .order('position', { ascending: true });
         
         if (stepsError) throw stepsError;
-        setSteps(stepsData || []);
+        
+        // Cast the step_type to the correct type
+        const typedSteps = stepsData?.map(step => ({
+          ...step,
+          step_type: step.step_type as "tooltip" | "modal" | "hotspot" | "slideout" | "checklist"
+        })) || [];
+        
+        setSteps(typedSteps as FlowStep[]);
       } catch (error: any) {
         toast({
           title: "Error loading flow",
@@ -77,12 +86,13 @@ const FlowEditor = () => {
         // Create new flow
         const { data, error } = await supabase
           .from('flows')
-          .insert([{ 
+          .insert({
             title, 
             description: description || null,
             is_draft: true,
             is_active: false,
-          }])
+            user_id: user!.id
+          })
           .select();
           
         if (error) throw error;

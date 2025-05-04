@@ -9,27 +9,27 @@ import { PricingSection } from "@/components/PricingSection";
 import { TestimonialsSection } from "@/components/TestimonialsSection";
 import { FinalCTA } from "@/components/FinalCTA";
 import { Footer } from "@/components/Footer";
-import { LaunchAnnouncementModal } from "@/components/LaunchAnnouncementModal";
-import { useEffect } from "react";
+import { LaunchAnnouncementBanner } from "@/components/LaunchAnnouncementBanner";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
+  
+  useEffect(() => {
+    // If user is already logged in, redirect to dashboard
+    if (!loading && user) {
+      navigate("/dashboard");
+    }
+  }, [user, loading, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main>
-        <div className="container mx-auto mt-4 mb-8 flex justify-end">
-          <Button 
-            onClick={() => navigate("/dashboard")}
-            className="bg-quickstartify-purple hover:bg-quickstartify-purple/90"
-          >
-            Flow Builder Dashboard <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
+        <LaunchAnnouncementBanner />
         <HeroSection />
         <ProblemSection />
         <SolutionShowcase />
@@ -40,7 +40,6 @@ const Index = () => {
         <FinalCTA />
       </main>
       <Footer />
-      <LaunchAnnouncementModal />
     </div>
   );
 };
