@@ -9,7 +9,185 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      flow_analytics: {
+        Row: {
+          created_at: string | null
+          event_type: string
+          flow_id: string
+          id: string
+          step_id: string | null
+          user_id: string | null
+          variation_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_type: string
+          flow_id: string
+          id?: string
+          step_id?: string | null
+          user_id?: string | null
+          variation_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_type?: string
+          flow_id?: string
+          id?: string
+          step_id?: string | null
+          user_id?: string | null
+          variation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flow_analytics_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "flows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flow_analytics_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "flow_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flow_analytics_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "flow_variations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flow_steps: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          dom_selector: string | null
+          flow_id: string
+          id: string
+          page_url: string | null
+          position: number
+          step_type: string
+          styling: Json | null
+          targeting_rules: Json | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          dom_selector?: string | null
+          flow_id: string
+          id?: string
+          page_url?: string | null
+          position: number
+          step_type: string
+          styling?: Json | null
+          targeting_rules?: Json | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          dom_selector?: string | null
+          flow_id?: string
+          id?: string
+          page_url?: string | null
+          position?: number
+          step_type?: string
+          styling?: Json | null
+          targeting_rules?: Json | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flow_steps_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flow_variations: {
+        Row: {
+          created_at: string | null
+          flow_id: string
+          id: string
+          is_active: boolean | null
+          name: string
+          traffic_percentage: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          flow_id: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          traffic_percentage?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          flow_id?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          traffic_percentage?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flow_variations_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flows: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_draft: boolean | null
+          title: string
+          updated_at: string | null
+          user_id: string
+          version: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_draft?: boolean | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+          version?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_draft?: boolean | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+          version?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

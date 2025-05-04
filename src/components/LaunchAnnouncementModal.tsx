@@ -1,61 +1,60 @@
 
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Mail, Linkedin } from "lucide-react";
+import { Mail, Linkedin, X } from "lucide-react";
 
 export function LaunchAnnouncementModal() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Set a timer to open the modal after 5 seconds
+    // Show the banner after 2 seconds
     const timer = setTimeout(() => {
-      setIsOpen(true);
+      setIsVisible(true);
     }, 2000);
 
-    // Clean up the timer when component unmounts
     return () => clearTimeout(timer);
   }, []);
 
+  if (!isVisible) return null;
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-center text-2xl font-bold">
-            <span className="text-quickstartify-purple">We're Launching Soon</span>
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-4 py-4 text-center">
-          <p className="text-lg">Still We brewing </p>
-          <div className="bg-quickstartify-purple/10 p-4 rounded-lg">
-            <h3 className="font-semibold text-quickstartify-purple">Looking for Rockstar Founding Team</h3>
-            <p className="font-medium mt-1">(Backend Engineer)</p>
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-quickstartify-purple/95 text-white py-3 px-4 shadow-lg">
+      <div className="container mx-auto">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <div className="text-lg font-semibold">We're Launching Soon</div>
+            <div className="text-sm md:border-l md:border-white/30 md:pl-4">
+              Still in ideation phase. Looking for Rockstar Founding Team (Backend Engineer)
+            </div>
           </div>
           
-          <div className="mt-4">
-            <p className="font-medium">Reach Out to Babajan Patan</p>
-            <div className="flex flex-col gap-3 justify-center mt-3">
-              <Button variant="outline" className="flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                <a href="mailto:babajank98@gmail.com"><span>babajank98@gmail.com</span></a>
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <div className="text-sm font-medium">Reach out to Babajan Patan:</div>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" className="bg-white/10 hover:bg-white/20 text-white border-white/20">
+                <Mail className="h-3.5 w-3.5 mr-1.5" />
+                <a href="mailto:babajank98@gmail.com">babajank98@gmail.com</a>
               </Button>
-              <Button variant="outline" className="flex items-center gap-2" asChild>
+              <Button variant="outline" size="sm" className="bg-white/10 hover:bg-white/20 text-white border-white/20" asChild>
                 <a href="https://www.linkedin.com/in/babajan-patan" target="_blank" rel="noreferrer">
-                  <Linkedin className="h-4 w-4" />
-                  <span>linkedin.com/in/babajan-patan</span>
+                  <Linkedin className="h-3.5 w-3.5 mr-1.5" />
+                  <span>LinkedIn</span>
                 </a>
               </Button>
             </div>
           </div>
-        </div>
-        
-        <div className="flex justify-center">
-          <Button onClick={() => setIsOpen(false)}>
-            Awesome! I'll Check Back Later
+          
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="absolute right-2 top-2 md:relative md:top-0 md:right-0 h-6 w-6 text-white/70 hover:text-white hover:bg-white/10"
+            onClick={() => setIsVisible(false)}
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
