@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
 import FlowEditor from "./pages/FlowEditor";
+import FlowBuilder from "./pages/FlowBuilder";
 import Auth from "./pages/Auth";
 
 // Placeholder pages for flow management features
@@ -39,6 +40,16 @@ const App = () => (
             <Route path="/flow/:id" element={
               <ProtectedRoute>
                 <FlowEditor />
+              </ProtectedRoute>
+            } />
+            <Route path="/builder/:id" element={
+              <ProtectedRoute>
+                <FlowBuilder />
+              </ProtectedRoute>
+            } />
+            <Route path="/builder" element={
+              <ProtectedRoute>
+                <FlowBuilder />
               </ProtectedRoute>
             } />
             {/* Additional flow management routes */}

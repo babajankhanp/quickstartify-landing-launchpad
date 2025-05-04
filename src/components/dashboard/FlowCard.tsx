@@ -35,7 +35,8 @@ export const FlowCard = ({ flow, onUpdate }: FlowCardProps) => {
   });
 
   const handleEdit = () => {
-    navigate(`/flow/${flow.id}`);
+    // Navigate to builder instead of editor
+    navigate(`/builder/${flow.id}`);
   };
 
   const handlePreview = () => {
@@ -177,4 +178,4 @@ export const FlowCard = ({ flow, onUpdate }: FlowCardProps) => {
       </CardFooter>
     </Card>
   );
-};
+}

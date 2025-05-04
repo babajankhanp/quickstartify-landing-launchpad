@@ -21,7 +21,7 @@ export function LaunchAnnouncementBanner() {
   };
 
   return (
-    <div className="bg-quickstartify-purple text-white w-full py-2 md:py-3 px-4 md:px-6">
+    <div className="fixed bottom-0 left-0 right-0 bg-quickstartify-purple text-white w-full py-2 md:py-3 px-4 md:px-6 z-50">
       <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between">
         <div className="flex items-center mb-2 sm:mb-0">
           <span className="text-xs md:text-sm font-medium">

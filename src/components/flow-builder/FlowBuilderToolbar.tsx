@@ -1,0 +1,96 @@
+
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { 
+  Save, 
+  Play, 
+  Eye, 
+  Settings2, 
+  BarChart2, 
+  GitBranch, 
+  TestTube, 
+  PenTool,
+  ArrowLeft
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+export function FlowBuilderToolbar({ flowName, onFlowNameChange, onSave }) {
+  const navigate = useNavigate();
+  const [isEditing, setIsEditing] = useState(false);
+  
+  return (
+    <div className="border-b p-3 flex items-center justify-between bg-white dark:bg-gray-900">
+      <div className="flex items-center gap-3">
+        <Button 
+          variant="ghost" 
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => navigate('/dashboard')}
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        
+        {isEditing ? (
+          <Input
+            value={flowName}
+            onChange={(e) => onFlowNameChange(e.target.value)}
+            onBlur={() => setIsEditing(false)}
+            onKeyDown={(e) => e.key === 'Enter' && setIsEditing(false)}
+            className="w-64 h-8"
+            autoFocus
+          />
+        ) : (
+          <h2 
+            className="text-lg font-semibold cursor-pointer"
+            onClick={() => setIsEditing(true)}
+          >
+            {flowName}
+          </h2>
+        )}
+      </div>
+      
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm">
+          <TestTube className="h-4 w-4 mr-2" />
+          A/B Test
+        </Button>
+        
+        <Button variant="outline" size="sm">
+          <PenTool className="h-4 w-4 mr-2" />
+          Branding
+        </Button>
+        
+        <Button variant="outline" size="sm">
+          <GitBranch className="h-4 w-4 mr-2" />
+          Versions
+        </Button>
+        
+        <Button variant="outline" size="sm">
+          <BarChart2 className="h-4 w-4 mr-2" />
+          Analytics
+        </Button>
+        
+        <Button variant="outline" size="sm">
+          <Settings2 className="h-4 w-4 mr-2" />
+          Settings
+        </Button>
+        
+        <Button variant="outline" size="sm">
+          <Eye className="h-4 w-4 mr-2" />
+          Preview
+        </Button>
+        
+        <Button variant="outline" size="sm" onClick={onSave}>
+          <Save className="h-4 w-4 mr-2" />
+          Save
+        </Button>
+        
+        <Button className="bg-quickstartify-purple hover:bg-quickstartify-purple/90">
+          <Play className="h-4 w-4 mr-2" />
+          Publish
+        </Button>
+      </div>
+    </div>
+  );
+}

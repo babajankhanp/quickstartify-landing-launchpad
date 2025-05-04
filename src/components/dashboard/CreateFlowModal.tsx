@@ -56,7 +56,8 @@ export const CreateFlowModal = ({ isOpen, onClose }: CreateFlowModalProps) => {
       });
       
       onClose();
-      navigate(`/flow/${data.id}`);
+      // Redirect to the flow builder instead of the flow editor
+      navigate(`/builder/${data.id}`);
     } catch (error: any) {
       toast({
         title: "Error creating flow",

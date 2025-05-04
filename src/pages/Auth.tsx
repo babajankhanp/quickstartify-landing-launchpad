@@ -1,21 +1,79 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Mail, Lock } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get tab from URL search params
+  const searchParams = new URLSearchParams(location.search);
+  const defaultTab = searchParams.get("tab") || "login";
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  // Handle super admin login
+  useEffect(() => {
+    if (email === "super@admin.com" && password === "super@09") {
+      const handleSuperLogin = async () => {
+        try {
+          const { error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          
+          if (error) {
+            // If super admin doesn't exist yet, create it
+            const { error: signUpError } = await supabase.auth.signUp({
+              email,
+              password,
+              options: {
+                data: {
+                  is_super_admin: true,
+                }
+              }
+            });
+            
+            if (signUpError) throw signUpError;
+            
+            // Try logging in again
+            await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
+          }
+          
+          toast({
+            title: "Super Admin Access Granted",
+            description: "Welcome back, administrator!",
+          });
+          
+          navigate("/dashboard");
+        } catch (error: any) {
+          toast({
+            title: "Error",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+      };
+      
+      if (loading) {
+        handleSuperLogin();
+      }
+    }
+  }, [email, password, loading]);
+
+  const handleSignUpWithEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
@@ -43,7 +101,7 @@ const Auth = () => {
     }
   };
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSignInWithEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
@@ -65,6 +123,26 @@ const Auth = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSignInWithGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        }
+      });
+      
+      if (error) throw error;
+      
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -95,81 +173,131 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         
-        <Tabs defaultValue="login">
+        <Tabs defaultValue={defaultTab}>
           <TabsList className="grid grid-cols-2 w-full">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="register">Register</TabsTrigger>
           </TabsList>
           
           <TabsContent value="login">
-            <form onSubmit={handleSignIn}>
+            <form onSubmit={handleSignInWithEmail}>
               <CardContent className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Email"
+                      className="pl-10"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Password"
+                      className="pl-10"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
                 </div>
-              </CardContent>
-              <CardFooter>
                 <Button 
                   type="submit" 
                   className="w-full bg-quickstartify-purple hover:bg-quickstartify-purple/90"
                   disabled={loading}
                 >
-                  {loading ? "Signing in..." : "Sign In"}
+                  {loading ? "Signing in..." : "Sign In with Email"}
                 </Button>
-              </CardFooter>
+                
+                <div className="flex items-center gap-4 my-4">
+                  <Separator className="flex-grow" />
+                  <span className="text-xs text-muted-foreground">OR</span>
+                  <Separator className="flex-grow" />
+                </div>
+                
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={handleSignInWithGoogle}
+                >
+                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
+                    alt="Google Logo" 
+                    className="h-4 w-4 mr-2" 
+                  />
+                  Sign In with Google
+                </Button>
+              </CardContent>
             </form>
           </TabsContent>
           
           <TabsContent value="register">
-            <form onSubmit={handleSignUp}>
+            <form onSubmit={handleSignUpWithEmail}>
               <CardContent className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Email"
+                      className="pl-10"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Password"
+                      className="pl-10"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
                 </div>
-              </CardContent>
-              <CardFooter>
                 <Button 
                   type="submit" 
                   className="w-full bg-quickstartify-purple hover:bg-quickstartify-purple/90"
                   disabled={loading}
                 >
-                  {loading ? "Creating account..." : "Create Account"}
+                  {loading ? "Creating account..." : "Create Account with Email"}
                 </Button>
-              </CardFooter>
+                
+                <div className="flex items-center gap-4 my-4">
+                  <Separator className="flex-grow" />
+                  <span className="text-xs text-muted-foreground">OR</span>
+                  <Separator className="flex-grow" />
+                </div>
+                
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={handleSignInWithGoogle}
+                >
+                  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
+                    alt="Google Logo" 
+                    className="h-4 w-4 mr-2" 
+                  />
+                  Sign Up with Google
+                </Button>
+              </CardContent>
             </form>
           </TabsContent>
         </Tabs>
