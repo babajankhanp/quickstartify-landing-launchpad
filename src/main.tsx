@@ -14,6 +14,13 @@ const initializeTheme = () => {
 // Run once on app initialization
 initializeTheme();
 
+// Set up theme persistence
+window.addEventListener('storage', (e) => {
+  if (e.key === 'theme') {
+    document.documentElement.classList.toggle("dark", e.newValue === "dark");
+  }
+});
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <App />
