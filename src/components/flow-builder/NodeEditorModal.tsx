@@ -49,7 +49,6 @@ export function NodeEditorModal({ node, updateNodeData, isOpen, onClose, deleteN
   const [content, setContent] = useState(node?.data?.content || '');
   const [formFields, setFormFields] = useState<FormFieldType[]>(node?.data?.formFields || []);
   const [milestones, setMilestones] = useState<MilestoneType[]>(node?.data?.milestones || []);
-  const [actionButtons, setActionButtons] = useState<ActionButtonType[]>(node?.data?.actionButtons || []);
   const [collectMetrics, setCollectMetrics] = useState(node?.data?.collectMetrics || false);
   const [activeMilestone, setActiveMilestone] = useState<string | null>(null);
   
@@ -59,7 +58,6 @@ export function NodeEditorModal({ node, updateNodeData, isOpen, onClose, deleteN
       content,
       formFields,
       milestones,
-      actionButtons,
       collectMetrics
     });
     onClose();
@@ -173,30 +171,6 @@ export function NodeEditorModal({ node, updateNodeData, isOpen, onClose, deleteN
     updateMilestone(milestoneIndex, { actionButtons: updatedButtons });
   };
 
-  // Action Buttons Management
-  const addActionButton = () => {
-    const newButton = {
-      id: `action-${Date.now()}`,
-      label: `Button ${actionButtons.length + 1}`,
-      action: 'next',
-      apiEndpoint: '',
-      collectMetrics: true,
-    };
-    setActionButtons([...actionButtons, newButton]);
-  };
-
-  const updateActionButton = (index: number, button: Partial<ActionButtonType>) => {
-    const updatedButtons = [...actionButtons];
-    updatedButtons[index] = { ...updatedButtons[index], ...button };
-    setActionButtons(updatedButtons);
-  };
-
-  const removeActionButton = (index: number) => {
-    const updatedButtons = [...actionButtons];
-    updatedButtons.splice(index, 1);
-    setActionButtons(updatedButtons);
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -212,7 +186,6 @@ export function NodeEditorModal({ node, updateNodeData, isOpen, onClose, deleteN
             <TabsTrigger value="content" className="flex-1">Content</TabsTrigger>
             <TabsTrigger value="milestones" className="flex-1">Milestones</TabsTrigger>
             <TabsTrigger value="form" className="flex-1">Form Schema</TabsTrigger>
-            <TabsTrigger value="actions" className="flex-1">Actions</TabsTrigger>
             <TabsTrigger value="styling" className="flex-1">Styling</TabsTrigger>
           </TabsList>
           
@@ -341,198 +314,201 @@ export function NodeEditorModal({ node, updateNodeData, isOpen, onClose, deleteN
                             />
                           </div>
                           
-                          {/* Milestone Form Fields */}
-                          <div className="pt-2">
-                            <div className="flex justify-between items-center mb-3">
-                              <Label className="text-sm font-medium">Form Fields</Label>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => addMilestoneFormField(milestoneIndex)}
-                              >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Field
-                              </Button>
-                            </div>
-                            
-                            {milestone.formFields.length === 0 ? (
-                              <div className="text-center py-4 text-xs text-muted-foreground border rounded-md">
-                                No form fields added to this milestone yet
+                          {/* Milestone Section - Combined Form Fields and Actions */}
+                          <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Form Fields Section */}
+                            <div>
+                              <div className="flex justify-between items-center mb-3">
+                                <Label className="text-sm font-medium">Form Fields</Label>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => addMilestoneFormField(milestoneIndex)}
+                                >
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Add Field
+                                </Button>
                               </div>
-                            ) : (
-                              <div className="space-y-3">
-                                {milestone.formFields.map((field, fieldIndex) => (
-                                  <div key={field.id} className="p-2 border rounded-md space-y-2">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-xs font-medium">{field.name}</span>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="icon"
-                                        className="h-6 w-6 text-destructive"
-                                        onClick={() => removeMilestoneFormField(milestoneIndex, fieldIndex)}
-                                      >
-                                        <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-2 gap-2">
-                                      <div>
-                                        <Label htmlFor={`milestone-field-name-${fieldIndex}`} className="text-xs">Name</Label>
-                                        <Input
-                                          id={`milestone-field-name-${fieldIndex}`}
-                                          value={field.name}
-                                          className="h-8 text-xs"
-                                          onChange={(e) => updateMilestoneFormField(milestoneIndex, fieldIndex, { name: e.target.value })}
-                                        />
-                                      </div>
-                                      
-                                      <div>
-                                        <Label htmlFor={`milestone-field-type-${fieldIndex}`} className="text-xs">Type</Label>
-                                        <Select 
-                                          value={field.type} 
-                                          onValueChange={(value) => updateMilestoneFormField(milestoneIndex, fieldIndex, { type: value })}
+                              
+                              {milestone.formFields.length === 0 ? (
+                                <div className="text-center py-4 text-xs text-muted-foreground border rounded-md">
+                                  No form fields added to this milestone yet
+                                </div>
+                              ) : (
+                                <div className="space-y-3">
+                                  {milestone.formFields.map((field, fieldIndex) => (
+                                    <div key={field.id} className="p-2 border rounded-md space-y-2">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-xs font-medium">{field.name}</span>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon"
+                                          className="h-6 w-6 text-destructive"
+                                          onClick={() => removeMilestoneFormField(milestoneIndex, fieldIndex)}
                                         >
-                                          <SelectTrigger id={`milestone-field-type-${fieldIndex}`} className="h-8">
-                                            <SelectValue placeholder="Select type" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="text">Text</SelectItem>
-                                            <SelectItem value="email">Email</SelectItem>
-                                            <SelectItem value="number">Number</SelectItem>
-                                            <SelectItem value="textarea">Textarea</SelectItem>
-                                            <SelectItem value="richtext">Rich Text</SelectItem>
-                                            <SelectItem value="select">Select</SelectItem>
-                                            <SelectItem value="checkbox">Checkbox</SelectItem>
-                                          </SelectContent>
-                                        </Select>
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
                                       </div>
                                       
-                                      {field.type === 'richtext' && (
-                                        <div className="col-span-2">
-                                          <Label htmlFor={`milestone-field-richtext-${fieldIndex}`} className="text-xs">Rich Text Content</Label>
-                                          <RichTextEditor
-                                            value={field.richTextContent || ''}
-                                            onChange={(content) => updateMilestoneFormField(milestoneIndex, fieldIndex, { richTextContent: content })}
-                                            placeholder="Enter rich content"
-                                          />
-                                          {field.richTextContent && (
-                                            <div className="mt-2">
-                                              <Label className="text-xs mb-1 block">Preview</Label>
-                                              <RichTextPreview content={field.richTextContent} />
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                      
-                                      <div className="flex items-center space-x-2 pt-1">
-                                        <Switch 
-                                          id={`milestone-field-required-${fieldIndex}`}
-                                          checked={field.required}
-                                          onCheckedChange={(checked) => updateMilestoneFormField(milestoneIndex, fieldIndex, { required: checked })}
-                                        />
-                                        <Label htmlFor={`milestone-field-required-${fieldIndex}`} className="text-xs">Required</Label>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Milestone Action Buttons */}
-                          <div className="pt-2">
-                            <div className="flex justify-between items-center mb-3">
-                              <Label className="text-sm font-medium">Action Buttons</Label>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => addMilestoneActionButton(milestoneIndex)}
-                              >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Button
-                              </Button>
-                            </div>
-                            
-                            {!milestone.actionButtons || milestone.actionButtons.length === 0 ? (
-                              <div className="text-center py-4 text-xs text-muted-foreground border rounded-md">
-                                No action buttons added to this milestone yet
-                              </div>
-                            ) : (
-                              <div className="space-y-3">
-                                {milestone.actionButtons.map((button, buttonIndex) => (
-                                  <div key={button.id} className="p-2 border rounded-md space-y-2">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-xs font-medium">{button.label}</span>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="icon"
-                                        className="h-6 w-6 text-destructive"
-                                        onClick={() => removeMilestoneActionButton(milestoneIndex, buttonIndex)}
-                                      >
-                                        <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-2 gap-2">
-                                      <div>
-                                        <Label htmlFor={`milestone-button-label-${buttonIndex}`} className="text-xs">Label</Label>
-                                        <Input
-                                          id={`milestone-button-label-${buttonIndex}`}
-                                          value={button.label}
-                                          className="h-8 text-xs"
-                                          onChange={(e) => updateMilestoneActionButton(milestoneIndex, buttonIndex, { label: e.target.value })}
-                                        />
-                                      </div>
-                                      
-                                      <div>
-                                        <Label htmlFor={`milestone-button-action-${buttonIndex}`} className="text-xs">Action</Label>
-                                        <Select 
-                                          value={button.action} 
-                                          onValueChange={(value) => updateMilestoneActionButton(milestoneIndex, buttonIndex, { action: value })}
-                                        >
-                                          <SelectTrigger id={`milestone-button-action-${buttonIndex}`} className="h-8">
-                                            <SelectValue placeholder="Select action" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="next">Next Step</SelectItem>
-                                            <SelectItem value="previous">Previous Step</SelectItem>
-                                            <SelectItem value="skip">Skip</SelectItem>
-                                            <SelectItem value="complete">Complete</SelectItem>
-                                            <SelectItem value="api">API Call</SelectItem>
-                                            <SelectItem value="url">Open URL</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                      
-                                      {button.action === 'api' && (
-                                        <div className="col-span-2">
-                                          <Label htmlFor={`milestone-api-endpoint-${buttonIndex}`} className="text-xs">API Endpoint</Label>
-                                          <Input
-                                            id={`milestone-api-endpoint-${buttonIndex}`}
-                                            value={button.apiEndpoint}
-                                            className="h-8 text-xs"
-                                            onChange={(e) => updateMilestoneActionButton(milestoneIndex, buttonIndex, { apiEndpoint: e.target.value })}
-                                            placeholder="https://api.example.com/endpoint"
-                                          />
-                                        </div>
-                                      )}
-                                      
-                                      <div className="flex items-center space-x-2 pt-1 col-span-2">
-                                        <Switch 
-                                          id={`milestone-button-metrics-${buttonIndex}`}
-                                          checked={button.collectMetrics}
-                                          onCheckedChange={(checked) => updateMilestoneActionButton(milestoneIndex, buttonIndex, { collectMetrics: checked })}
-                                        />
+                                      <div className="grid grid-cols-2 gap-2">
                                         <div>
-                                          <Label htmlFor={`milestone-button-metrics-${buttonIndex}`} className="text-xs">Collect Metrics</Label>
-                                          <p className="text-xs text-muted-foreground">Track when users click this button</p>
+                                          <Label htmlFor={`milestone-field-name-${fieldIndex}`} className="text-xs">Name</Label>
+                                          <Input
+                                            id={`milestone-field-name-${fieldIndex}`}
+                                            value={field.name}
+                                            className="h-8 text-xs"
+                                            onChange={(e) => updateMilestoneFormField(milestoneIndex, fieldIndex, { name: e.target.value })}
+                                          />
+                                        </div>
+                                        
+                                        <div>
+                                          <Label htmlFor={`milestone-field-type-${fieldIndex}`} className="text-xs">Type</Label>
+                                          <Select 
+                                            value={field.type} 
+                                            onValueChange={(value) => updateMilestoneFormField(milestoneIndex, fieldIndex, { type: value })}
+                                          >
+                                            <SelectTrigger id={`milestone-field-type-${fieldIndex}`} className="h-8">
+                                              <SelectValue placeholder="Select type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="text">Text</SelectItem>
+                                              <SelectItem value="email">Email</SelectItem>
+                                              <SelectItem value="number">Number</SelectItem>
+                                              <SelectItem value="textarea">Textarea</SelectItem>
+                                              <SelectItem value="richtext">Rich Text</SelectItem>
+                                              <SelectItem value="select">Select</SelectItem>
+                                              <SelectItem value="checkbox">Checkbox</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        
+                                        {field.type === 'richtext' && (
+                                          <div className="col-span-2">
+                                            <Label htmlFor={`milestone-field-richtext-${fieldIndex}`} className="text-xs">Rich Text Content</Label>
+                                            <RichTextEditor
+                                              value={field.richTextContent || ''}
+                                              onChange={(content) => updateMilestoneFormField(milestoneIndex, fieldIndex, { richTextContent: content })}
+                                              placeholder="Enter rich content"
+                                            />
+                                            {field.richTextContent && (
+                                              <div className="mt-2">
+                                                <Label className="text-xs mb-1 block">Preview</Label>
+                                                <RichTextPreview content={field.richTextContent} />
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                        
+                                        <div className="flex items-center space-x-2 pt-1">
+                                          <Switch 
+                                            id={`milestone-field-required-${fieldIndex}`}
+                                            checked={field.required}
+                                            onCheckedChange={(checked) => updateMilestoneFormField(milestoneIndex, fieldIndex, { required: checked })}
+                                          />
+                                          <Label htmlFor={`milestone-field-required-${fieldIndex}`} className="text-xs">Required</Label>
                                         </div>
                                       </div>
                                     </div>
-                                  </div>
-                                ))}
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Action Buttons Section */}
+                            <div>
+                              <div className="flex justify-between items-center mb-3">
+                                <Label className="text-sm font-medium">Action Buttons</Label>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => addMilestoneActionButton(milestoneIndex)}
+                                >
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Add Button
+                                </Button>
                               </div>
-                            )}
+                              
+                              {!milestone.actionButtons || milestone.actionButtons.length === 0 ? (
+                                <div className="text-center py-4 text-xs text-muted-foreground border rounded-md">
+                                  No action buttons added to this milestone yet
+                                </div>
+                              ) : (
+                                <div className="space-y-3">
+                                  {milestone.actionButtons.map((button, buttonIndex) => (
+                                    <div key={button.id} className="p-2 border rounded-md space-y-2">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-xs font-medium">{button.label}</span>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon"
+                                          className="h-6 w-6 text-destructive"
+                                          onClick={() => removeMilestoneActionButton(milestoneIndex, buttonIndex)}
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                      
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                          <Label htmlFor={`milestone-button-label-${buttonIndex}`} className="text-xs">Label</Label>
+                                          <Input
+                                            id={`milestone-button-label-${buttonIndex}`}
+                                            value={button.label}
+                                            className="h-8 text-xs"
+                                            onChange={(e) => updateMilestoneActionButton(milestoneIndex, buttonIndex, { label: e.target.value })}
+                                          />
+                                        </div>
+                                        
+                                        <div>
+                                          <Label htmlFor={`milestone-button-action-${buttonIndex}`} className="text-xs">Action</Label>
+                                          <Select 
+                                            value={button.action} 
+                                            onValueChange={(value) => updateMilestoneActionButton(milestoneIndex, buttonIndex, { action: value })}
+                                          >
+                                            <SelectTrigger id={`milestone-button-action-${buttonIndex}`} className="h-8">
+                                              <SelectValue placeholder="Select action" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="next">Next Step</SelectItem>
+                                              <SelectItem value="previous">Previous Step</SelectItem>
+                                              <SelectItem value="skip">Skip</SelectItem>
+                                              <SelectItem value="complete">Complete</SelectItem>
+                                              <SelectItem value="api">API Call</SelectItem>
+                                              <SelectItem value="url">Open URL</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        
+                                        {button.action === 'api' && (
+                                          <div className="col-span-2">
+                                            <Label htmlFor={`milestone-api-endpoint-${buttonIndex}`} className="text-xs">API Endpoint</Label>
+                                            <Input
+                                              id={`milestone-api-endpoint-${buttonIndex}`}
+                                              value={button.apiEndpoint}
+                                              className="h-8 text-xs"
+                                              onChange={(e) => updateMilestoneActionButton(milestoneIndex, buttonIndex, { apiEndpoint: e.target.value })}
+                                              placeholder="https://api.example.com/endpoint"
+                                            />
+                                          </div>
+                                        )}
+                                        
+                                        <div className="flex items-center space-x-2 pt-1 col-span-2">
+                                          <Switch 
+                                            id={`milestone-button-metrics-${buttonIndex}`}
+                                            checked={button.collectMetrics}
+                                            onCheckedChange={(checked) => updateMilestoneActionButton(milestoneIndex, buttonIndex, { collectMetrics: checked })}
+                                          />
+                                          <div>
+                                            <Label htmlFor={`milestone-button-metrics-${buttonIndex}`} className="text-xs">Collect Metrics</Label>
+                                            <p className="text-xs text-muted-foreground">Track when users click this button</p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -655,100 +631,6 @@ export function NodeEditorModal({ node, updateNodeData, isOpen, onClose, deleteN
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Form Field
-              </Button>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="actions" className="space-y-4 pt-4">
-            <Card className="p-4 bg-muted/30">
-              <Label className="text-lg font-medium mb-4 block">Action Buttons</Label>
-              
-              {actionButtons.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No action buttons added yet. Add your first button below.
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {actionButtons.map((button, index) => (
-                    <div key={button.id} className="p-3 border rounded-md space-y-3">
-                      <div className="flex justify-between items-center">
-                        <h4 className="font-medium">{button.label}</h4>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="h-8 w-8 text-destructive"
-                          onClick={() => removeActionButton(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label htmlFor={`action-label-${index}`}>Button Label</Label>
-                          <Input
-                            id={`action-label-${index}`}
-                            value={button.label}
-                            onChange={(e) => updateActionButton(index, { label: e.target.value })}
-                          />
-                        </div>
-                        
-                        <div className="space-y-1">
-                          <Label htmlFor={`action-type-${index}`}>Action Type</Label>
-                          <Select 
-                            value={button.action} 
-                            onValueChange={(value) => updateActionButton(index, { action: value })}
-                          >
-                            <SelectTrigger id={`action-type-${index}`}>
-                              <SelectValue placeholder="Select action" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="next">Next Step</SelectItem>
-                              <SelectItem value="previous">Previous Step</SelectItem>
-                              <SelectItem value="skip">Skip</SelectItem>
-                              <SelectItem value="complete">Complete</SelectItem>
-                              <SelectItem value="api">API Call</SelectItem>
-                              <SelectItem value="url">Open URL</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        {button.action === 'api' && (
-                          <div className="space-y-1 col-span-2">
-                            <Label htmlFor={`api-endpoint-${index}`}>API Endpoint</Label>
-                            <Input
-                              id={`api-endpoint-${index}`}
-                              value={button.apiEndpoint}
-                              onChange={(e) => updateActionButton(index, { apiEndpoint: e.target.value })}
-                              placeholder="https://api.example.com/endpoint"
-                            />
-                          </div>
-                        )}
-                        
-                        <div className="flex items-center space-x-2 pt-4 col-span-2">
-                          <Switch 
-                            id={`button-metrics-${index}`}
-                            checked={button.collectMetrics}
-                            onCheckedChange={(checked) => updateActionButton(index, { collectMetrics: checked })}
-                          />
-                          <div>
-                            <Label htmlFor={`button-metrics-${index}`}>Collect Metrics</Label>
-                            <p className="text-xs text-muted-foreground">Track when users click this button</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              <Button 
-                variant="outline" 
-                className="w-full mt-4"
-                onClick={addActionButton}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Action Button
               </Button>
             </Card>
           </TabsContent>

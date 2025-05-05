@@ -293,14 +293,6 @@ const FlowBuilder = () => {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Flow Settings</h3>
             
-            <div className="space-y-2">
-              <Label htmlFor="flowTarget">Target Pages</Label>
-              <Input 
-                id="flowTarget"
-                placeholder="/dashboard, /settings/*"
-              />
-            </div>
-            
             <div className="flex items-center justify-between">
               <Label htmlFor="publishToggle">Publish Flow</Label>
               <Switch id="publishToggle" />

@@ -38,7 +38,6 @@ const FlowPreview = () => {
   const [themeMode, setThemeMode] = useState(() => 
     document.documentElement.classList.contains("dark") ? "dark" : "light"
   );
-  const [pathSimulation, setPathSimulation] = useState("/dashboard");
   
   // Fetch flow data
   useEffect(() => {
@@ -254,12 +253,6 @@ const FlowPreview = () => {
                 </Button>
                 
                 <Separator orientation="vertical" className="h-6" />
-                
-                <Input 
-                  value={pathSimulation}
-                  onChange={(e) => setPathSimulation(e.target.value)}
-                  className="w-full max-w-64 h-8"
-                />
               </div>
               
               <div className="flex items-center space-x-2">
