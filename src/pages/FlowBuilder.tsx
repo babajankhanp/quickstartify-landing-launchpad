@@ -48,7 +48,7 @@ import { BranchNode } from '@/components/flow-builder/nodes/BranchNode';
 import { DelayNode } from '@/components/flow-builder/nodes/DelayNode';
 import { ApiTriggerNode } from '@/components/flow-builder/nodes/ApiTriggerNode';
 import { ABSwitchNode } from '@/components/flow-builder/nodes/ABSwitchNode';
-import { NodeConfigPanel } from '@/components/flow-builder/NodeConfigPanel';
+import { NodeEditorModal } from '@/components/flow-builder/NodeEditorModal';
 import { FlowBuilderToolbar } from '@/components/flow-builder/FlowBuilderToolbar';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -87,6 +87,7 @@ const FlowBuilder = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
   const [flowName, setFlowName] = useState("My Onboarding Flow");
   const [isDragging, setIsDragging] = useState(false);
   const reactFlowWrapper = useRef(null);
@@ -95,6 +96,7 @@ const FlowBuilder = () => {
   // Handle node selection
   const onNodeClick = useCallback((_, node) => {
     setSelectedNode(node);
+    setIsEditorModalOpen(true);
   }, []);
   
   // Handle connection of nodes
@@ -171,6 +173,7 @@ const FlowBuilder = () => {
     setNodes(nodes.filter(node => node.id !== nodeId));
     if (selectedNode && selectedNode.id === nodeId) {
       setSelectedNode(null);
+      setIsEditorModalOpen(false);
     }
   };
 
@@ -361,29 +364,18 @@ const FlowBuilder = () => {
             </Panel>
           </ReactFlow>
         </div>
-        
-        {/* Node configuration panel */}
-        {selectedNode && (
-          <div className="w-80 border-l p-4 overflow-y-auto bg-gray-50 dark:bg-gray-800">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Edit Node</h3>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="h-8 w-8 text-destructive"
-                onClick={() => deleteNode(selectedNode.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <NodeConfigPanel 
-              node={selectedNode} 
-              updateNodeData={(data) => updateNodeData(selectedNode.id, data)} 
-            />
-          </div>
-        )}
       </div>
+
+      {/* Node editor modal */}
+      {selectedNode && (
+        <NodeEditorModal 
+          node={selectedNode}
+          isOpen={isEditorModalOpen}
+          onClose={() => setIsEditorModalOpen(false)}
+          updateNodeData={(data) => updateNodeData(selectedNode.id, data)}
+          deleteNode={deleteNode}
+        />
+      )}
     </div>
   );
 };

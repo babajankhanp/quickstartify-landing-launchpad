@@ -11,14 +11,12 @@ import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
 import FlowEditor from "./pages/FlowEditor";
 import FlowBuilder from "./pages/FlowBuilder";
+import FlowPreview from "./pages/FlowPreview";
+import FlowMetrics from "./pages/FlowMetrics";
+import FlowVersions from "./pages/FlowVersions";
+import FlowABTest from "./pages/FlowABTest";
+import FlowBranding from "./pages/FlowBranding";
 import Auth from "./pages/Auth";
-
-// Placeholder pages for flow management features
-const FlowPreview = () => <div className="p-8"><h1 className="text-2xl font-bold">Flow Preview</h1><p className="mt-4">This is a placeholder for the flow preview page.</p></div>;
-const FlowMetrics = () => <div className="p-8"><h1 className="text-2xl font-bold">Flow Analytics</h1><p className="mt-4">This is a placeholder for the flow analytics page.</p></div>;
-const FlowVersions = () => <div className="p-8"><h1 className="text-2xl font-bold">Flow Versions</h1><p className="mt-4">This is a placeholder for the flow versions page.</p></div>;
-const FlowABTest = () => <div className="p-8"><h1 className="text-2xl font-bold">Flow A/B Testing</h1><p className="mt-4">This is a placeholder for the flow A/B testing page.</p></div>;
-const FlowBranding = () => <div className="p-8"><h1 className="text-2xl font-bold">Flow Branding</h1><p className="mt-4">This is a placeholder for the flow branding customization page.</p></div>;
 
 const queryClient = new QueryClient();
 
@@ -52,7 +50,7 @@ const App = () => (
                 <FlowBuilder />
               </ProtectedRoute>
             } />
-            {/* Additional flow management routes */}
+            {/* Flow management routes */}
             <Route path="/flow/:id/preview" element={
               <ProtectedRoute>
                 <FlowPreview />
