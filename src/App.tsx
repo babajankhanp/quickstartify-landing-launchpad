@@ -16,6 +16,7 @@ import FlowMetrics from "./pages/FlowMetrics";
 import FlowVersions from "./pages/FlowVersions";
 import FlowABTest from "./pages/FlowABTest";
 import FlowBranding from "./pages/FlowBranding";
+import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
@@ -74,6 +75,11 @@ const App = () => (
             <Route path="/flow/:id/branding" element={
               <ProtectedRoute>
                 <FlowBranding />
+              </ProtectedRoute>
+            } />
+            <Route path="/flow/:id/settings" element={
+              <ProtectedRoute>
+                <Settings />
               </ProtectedRoute>
             } />
             {/* Catch-all route */}
