@@ -45,7 +45,7 @@ interface ExtendedFlowStep extends FlowStep {
     styling?: {
       background?: string;
       textColor?: string;
-      borderColor?: string;
+      border?: string;
       buttonColor?: string;
     };
   };
@@ -94,6 +94,9 @@ const FlowPreview = () => {
           .order('position', { ascending: true });
         
         if (stepsError) throw stepsError;
+        
+        // Log data to help debug
+        console.log('Flow steps data:', stepsData);
         
         setSteps(stepsData as ExtendedFlowStep[]);
       } catch (error: any) {
@@ -202,18 +205,29 @@ const FlowPreview = () => {
     if (steps.length === 0 || currentStep >= steps.length) return null;
     
     const step = steps[currentStep];
+    
+    if (!step || !step.data) {
+      console.error("Step or step.data is undefined:", step);
+      return null;
+    }
+    
+    console.log("Current step data:", step);
+    console.log("Active milestone:", activeMilestone);
+    
     const nodeData = step.data || {};
     const styling = nodeData.styling || {};
     const milestones = nodeData.milestones || [];
     const currentMilestone = milestones[activeMilestone];
     const modalBackground = getModalBackgroundStyle(step);
     const textColor = styling.textColor || 'text-foreground';
-    const borderColor = styling.borderColor || 'border-gray-200 dark:border-gray-700';
+    const borderColor = styling.border || 'border-gray-200 dark:border-gray-700';
+    
+    console.log("Current milestone:", currentMilestone);
     
     switch (step.step_type) {
       case 'modal':
         return (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className={`${modalBackground} p-6 rounded-lg shadow-lg max-w-md w-full ${borderColor} border`}>
               <h3 className={`text-lg font-semibold mb-2 ${textColor}`}>{step.title || nodeData.label}</h3>
               
@@ -244,12 +258,12 @@ const FlowPreview = () => {
                             variant={field.buttonAction === 'skip' ? "outline" : "default"}
                             className={field.buttonAction === 'skip' ? "" : "bg-quickstartify-purple hover:bg-quickstartify-purple/90"}
                           >
-                            {field.buttonLabel}
+                            {field.buttonLabel || 'Continue'}
                           </Button>
                         ) : (
                           // Render input field
                           <>
-                            <label className="text-sm font-medium">{field.name}</label>
+                            {field.name && <label className={`text-sm font-medium ${textColor}`}>{field.name}</label>}
                             {field.type === 'richtext' ? (
                               field.richTextContent ? (
                                 <RichTextPreview content={field.richTextContent} />
@@ -275,7 +289,7 @@ const FlowPreview = () => {
                               </select>
                             ) : (
                               <input 
-                                type={field.type} 
+                                type={field.type || 'text'} 
                                 placeholder={field.placeholder} 
                                 className="w-full p-2 border rounded-md" 
                               />
@@ -469,7 +483,7 @@ const FlowPreview = () => {
             <CardContent className="p-2 flex justify-center bg-gray-100 dark:bg-gray-900 min-h-[60vh]">
               <div className={`bg-white dark:bg-gray-800 overflow-hidden border rounded-md shadow ${getDeviceFrameClass()}`}>
                 {/* Empty Content Frame - Just for preview */}
-                <div className="w-full h-full flex flex-col p-0">
+                <div className="w-full h-full flex flex-col p-0 relative">
                   <div className="bg-blue-500 dark:bg-blue-800 h-14 flex items-center px-4 text-white">
                     <h2 className="text-lg font-medium">Application Navigation</h2>
                   </div>
@@ -490,7 +504,7 @@ const FlowPreview = () => {
                           <div key={i} className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-700">
                             <div className="font-medium">Metric {i+1}</div>
                             <div className="text-2xl font-bold mt-1">
-                              {Math.floor(Math.random() * 1000)}
+                              {[81, 23, 664][i]}
                             </div>
                           </div>
                         ))}
