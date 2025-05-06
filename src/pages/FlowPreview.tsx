@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Flow, FlowStep } from "@/integrations/supabase/models";
+import { RichTextPreview } from "@/components/ui/rich-text-editor";
 
 const FlowPreview = () => {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +39,7 @@ const FlowPreview = () => {
   const [themeMode, setThemeMode] = useState(() => 
     document.documentElement.classList.contains("dark") ? "dark" : "light"
   );
+  const [activeMilestone, setActiveMilestone] = useState(0);
   
   // Fetch flow data
   useEffect(() => {
@@ -91,6 +93,7 @@ const FlowPreview = () => {
   const handleNextStep = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
+      setActiveMilestone(0); // Reset milestone when moving to next step
     } else {
       toast({
         title: "Flow complete",
@@ -102,17 +105,38 @@ const FlowPreview = () => {
   const handlePrevStep = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
+      setActiveMilestone(0); // Reset milestone when moving to previous step
     }
   };
   
   const handleSkipStep = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
+      setActiveMilestone(0); // Reset milestone when skipping
     } else {
       toast({
         title: "Flow skipped",
         description: "User has skipped the last step",
       });
+    }
+  };
+
+  const handleMilestoneNext = () => {
+    const currentNode = steps[currentStep];
+    const milestones = currentNode?.milestones || [];
+    
+    if (activeMilestone < milestones.length - 1) {
+      setActiveMilestone(activeMilestone + 1);
+    } else {
+      handleNextStep();
+    }
+  };
+  
+  const handleMilestonePrev = () => {
+    if (activeMilestone > 0) {
+      setActiveMilestone(activeMilestone - 1);
+    } else {
+      handlePrevStep();
     }
   };
   
@@ -139,18 +163,138 @@ const FlowPreview = () => {
     if (steps.length === 0 || currentStep >= steps.length) return null;
     
     const step = steps[currentStep];
+    const nodeData = step.data || {};
+    const milestones = nodeData.milestones || [];
+    const currentMilestone = milestones[activeMilestone];
     
     switch (step.step_type) {
       case 'modal':
         return (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md">
-              <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
-              <p className="mb-4">{step.content}</p>
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={handleSkipStep}>Skip</Button>
-                <Button onClick={handleNextStep}>Continue</Button>
-              </div>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full">
+              <h3 className="text-lg font-semibold mb-2">{step.title || nodeData.label}</h3>
+              
+              {currentMilestone ? (
+                // Render milestone content
+                <div className="space-y-4">
+                  <div className="mb-4">
+                    <h4 className="font-medium">{currentMilestone.title}</h4>
+                    {currentMilestone.subtitle && <p className="text-sm text-muted-foreground">{currentMilestone.subtitle}</p>}
+                  </div>
+                  
+                  {/* Render form fields and buttons in the order they appear */}
+                  <div className="space-y-4">
+                    {currentMilestone.formFields?.map((field, idx) => (
+                      <div key={idx} className="space-y-1">
+                        {field.isButton ? (
+                          // Render button
+                          <Button 
+                            onClick={() => {
+                              if (field.buttonAction === 'next') handleMilestoneNext();
+                              else if (field.buttonAction === 'previous') handleMilestonePrev();
+                              else if (field.buttonAction === 'skip') handleSkipStep();
+                              else toast({ 
+                                title: `Button clicked: ${field.buttonLabel}`, 
+                                description: `Action: ${field.buttonAction}` 
+                              });
+                            }}
+                            variant={field.buttonAction === 'skip' ? "outline" : "default"}
+                            className={field.buttonAction === 'skip' ? "" : "bg-quickstartify-purple hover:bg-quickstartify-purple/90"}
+                          >
+                            {field.buttonLabel}
+                          </Button>
+                        ) : (
+                          // Render input field
+                          <>
+                            <label className="text-sm font-medium">{field.name}</label>
+                            {field.type === 'richtext' ? (
+                              field.richTextContent ? (
+                                <RichTextPreview content={field.richTextContent} />
+                              ) : (
+                                <div className="border rounded p-2 text-sm text-muted-foreground">Rich text content would be shown here</div>
+                              )
+                            ) : field.type === 'textarea' ? (
+                              <textarea 
+                                placeholder={field.placeholder} 
+                                className="w-full p-2 border rounded-md resize-none" 
+                                rows={3}
+                              />
+                            ) : field.type === 'checkbox' ? (
+                              <div className="flex items-center">
+                                <input type="checkbox" id={`field-${idx}`} className="mr-2" />
+                                <label htmlFor={`field-${idx}`}>{field.placeholder}</label>
+                              </div>
+                            ) : field.type === 'select' ? (
+                              <select className="w-full p-2 border rounded-md">
+                                <option value="">Select an option</option>
+                                <option value="option1">Option 1</option>
+                                <option value="option2">Option 2</option>
+                              </select>
+                            ) : (
+                              <input 
+                                type={field.type} 
+                                placeholder={field.placeholder} 
+                                className="w-full p-2 border rounded-md" 
+                              />
+                            )}
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Show milestone navigation if no buttons in milestone */}
+                  {(!currentMilestone.formFields || !currentMilestone.formFields.some(field => field.isButton)) && (
+                    <div className="flex justify-end space-x-2 pt-2">
+                      <Button variant="outline" onClick={handleMilestonePrev} disabled={activeMilestone === 0 && currentStep === 0}>
+                        Back
+                      </Button>
+                      <Button 
+                        onClick={handleMilestoneNext} 
+                        className="bg-quickstartify-purple hover:bg-quickstartify-purple/90"
+                      >
+                        {activeMilestone === milestones.length - 1 && currentStep === steps.length - 1 ? "Finish" : "Next"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Render regular content if no milestone
+                <>
+                  <div className="mb-4">
+                    {nodeData.content ? (
+                      typeof nodeData.content === 'string' && nodeData.content.startsWith('<') ? (
+                        <RichTextPreview content={nodeData.content} />
+                      ) : (
+                        <p>{nodeData.content}</p>
+                      )
+                    ) : (
+                      <p>{step.content}</p>
+                    )}
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="outline" onClick={handleSkipStep}>Skip</Button>
+                    <Button 
+                      onClick={handleNextStep}
+                      className="bg-quickstartify-purple hover:bg-quickstartify-purple/90"
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                </>
+              )}
+              
+              {/* Milestone indicators */}
+              {milestones.length > 1 && (
+                <div className="flex justify-center mt-4 space-x-1">
+                  {milestones.map((_, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`w-2 h-2 rounded-full ${idx === activeMilestone ? 'bg-quickstartify-purple' : 'bg-gray-300 dark:bg-gray-600'}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -158,8 +302,8 @@ const FlowPreview = () => {
       case 'tooltip':
         return (
           <div className="absolute bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg max-w-xs">
-            <h3 className="text-sm font-semibold">{step.title}</h3>
-            <p className="text-xs mt-1">{step.content}</p>
+            <h3 className="text-sm font-semibold">{step.title || nodeData.label}</h3>
+            <p className="text-xs mt-1">{step.content || nodeData.content}</p>
             <div className="flex justify-end space-x-2 mt-2">
               <Button size="sm" variant="ghost" onClick={handleSkipStep}>Skip</Button>
               <Button size="sm" onClick={handleNextStep}>Next</Button>
@@ -178,7 +322,7 @@ const FlowPreview = () => {
       case 'checklist':
         return (
           <div className="absolute right-4 top-20 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
-            <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
+            <h3 className="text-lg font-semibold mb-2">{step.title || nodeData.label}</h3>
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="flex items-center">
@@ -198,8 +342,8 @@ const FlowPreview = () => {
       default:
         return (
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
-            <h3 className="text-lg font-semibold">{step.title}</h3>
-            <p>{step.content}</p>
+            <h3 className="text-lg font-semibold">{step.title || nodeData.label}</h3>
+            <p>{step.content || nodeData.content}</p>
           </div>
         );
     }
@@ -342,7 +486,10 @@ const FlowPreview = () => {
                 </SelectContent>
               </Select>
               
-              <Button variant="outline" size="sm" onClick={() => setCurrentStep(0)}>
+              <Button variant="outline" size="sm" onClick={() => {
+                setCurrentStep(0);
+                setActiveMilestone(0);
+              }}>
                 Reset Flow
               </Button>
             </div>
@@ -353,12 +500,15 @@ const FlowPreview = () => {
                   variant="outline" 
                   size="icon" 
                   onClick={handlePrevStep}
-                  disabled={currentStep === 0}
+                  disabled={currentStep === 0 && activeMilestone === 0}
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <span className="mx-3">
                   Step {currentStep + 1} of {steps.length}
+                  {steps[currentStep]?.data?.milestones?.length > 0 && (
+                    <> • Milestone {activeMilestone + 1} of {steps[currentStep]?.data?.milestones?.length}</>
+                  )}
                 </span>
                 <Button 
                   variant="outline" 
@@ -454,15 +604,5 @@ const FlowPreview = () => {
     </div>
   );
 };
-
-// Need to add Input component for the path simulation input
-function Input({ className, ...props }) {
-  return (
-    <input
-      className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
-      {...props}
-    />
-  );
-}
 
 export default FlowPreview;
