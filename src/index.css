@@ -125,6 +125,15 @@
   border-color: var(--quickstartify-purple);
 }
 
+/* Background gradient styles for nodes */
+.bg-gradient-to-br.from-purple-50.to-blue-50 {
+  background-image: linear-gradient(to bottom right, rgb(250 245 255 / 1), rgb(239 246 255 / 1));
+}
+
+.dark .bg-gradient-to-br.from-purple-900\/50.to-blue-900\/50 {
+  background-image: linear-gradient(to bottom right, rgb(88 28 135 / 0.5), rgb(30 58 138 / 0.5));
+}
+
 /* Update the create flow modal to redirect to builder */
 .create-flow-modal {
   @apply bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg;
