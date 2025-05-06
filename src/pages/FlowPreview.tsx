@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -98,8 +99,114 @@ const FlowPreview = () => {
         // Log data to help debug
         console.log('Flow steps data:', stepsData);
         
-        setSteps(stepsData as ExtendedFlowStep[]);
+        if (stepsData.length === 0) {
+          // If no steps are found, create a sample step for testing
+          const sampleStep: ExtendedFlowStep = {
+            id: 'sample-1',
+            flow_id: id,
+            title: 'Welcome',
+            content: 'This is a sample step',
+            position: 1,
+            step_type: 'modal',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            data: {
+              label: 'Welcome to the Flow',
+              content: 'This is a sample onboarding flow to demonstrate how milestones work.',
+              milestones: [
+                {
+                  title: 'Introduction',
+                  subtitle: 'Welcome to our app',
+                  formFields: [
+                    {
+                      type: 'richtext',
+                      richTextContent: '<p>Welcome to our application! This is the first milestone in your onboarding journey.</p>'
+                    },
+                    {
+                      isButton: true,
+                      buttonLabel: 'Continue',
+                      buttonAction: 'next'
+                    }
+                  ]
+                },
+                {
+                  title: 'Set Up Your Profile',
+                  subtitle: 'Tell us about yourself',
+                  formFields: [
+                    {
+                      name: 'Name',
+                      type: 'text',
+                      placeholder: 'Your name'
+                    },
+                    {
+                      name: 'Email',
+                      type: 'email',
+                      placeholder: 'your@email.com'
+                    },
+                    {
+                      isButton: true,
+                      buttonLabel: 'Save Profile',
+                      buttonAction: 'next'
+                    }
+                  ]
+                },
+                {
+                  title: 'Preferences',
+                  subtitle: 'Customize your experience',
+                  formFields: [
+                    {
+                      name: 'Theme',
+                      type: 'select',
+                      placeholder: 'Select theme'
+                    },
+                    {
+                      name: 'Notifications',
+                      type: 'checkbox',
+                      placeholder: 'Enable notifications'
+                    },
+                    {
+                      isButton: true,
+                      buttonLabel: 'Complete Setup',
+                      buttonAction: 'next'
+                    },
+                    {
+                      isButton: true,
+                      buttonLabel: 'Skip',
+                      buttonAction: 'skip'
+                    }
+                  ]
+                }
+              ],
+              styling: {
+                background: 'bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/50 dark:to-blue-900/50',
+                textColor: 'text-gray-800 dark:text-white',
+                border: 'border-purple-200 dark:border-purple-800',
+                buttonColor: 'bg-quickstartify-purple hover:bg-quickstartify-purple/90'
+              }
+            }
+          };
+          
+          setSteps([sampleStep]);
+          console.log('Created sample step for testing:', sampleStep);
+        } else {
+          // Enhance steps data with proper type casting
+          const enhancedSteps = stepsData.map((step: any) => {
+            // Parse JSON string data if needed
+            if (typeof step.data === 'string') {
+              try {
+                step.data = JSON.parse(step.data);
+              } catch (e) {
+                console.error('Failed to parse step data:', e);
+              }
+            }
+            return step as ExtendedFlowStep;
+          });
+          
+          setSteps(enhancedSteps);
+          console.log('Enhanced steps:', enhancedSteps);
+        }
       } catch (error: any) {
+        console.error('Error fetching flow data:', error);
         toast({
           title: "Error loading flow",
           description: error.message,
@@ -221,6 +328,7 @@ const FlowPreview = () => {
     const modalBackground = getModalBackgroundStyle(step);
     const textColor = styling.textColor || 'text-foreground';
     const borderColor = styling.border || 'border-gray-200 dark:border-gray-700';
+    const buttonColor = styling.buttonColor || 'bg-quickstartify-purple hover:bg-quickstartify-purple/90';
     
     console.log("Current milestone:", currentMilestone);
     
@@ -229,15 +337,16 @@ const FlowPreview = () => {
         return (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className={`${modalBackground} p-6 rounded-lg shadow-lg max-w-md w-full ${borderColor} border`}>
-              <h3 className={`text-lg font-semibold mb-2 ${textColor}`}>{step.title || nodeData.label}</h3>
+              <h3 className={`text-lg font-semibold mb-2 ${textColor}`}>
+                {currentMilestone ? currentMilestone.title : (step.title || nodeData.label)}
+              </h3>
               
               {currentMilestone ? (
                 // Render milestone content
                 <div className="space-y-4">
-                  <div className="mb-4">
-                    <h4 className={`font-medium ${textColor}`}>{currentMilestone.title}</h4>
-                    {currentMilestone.subtitle && <p className="text-sm text-muted-foreground">{currentMilestone.subtitle}</p>}
-                  </div>
+                  {currentMilestone.subtitle && (
+                    <p className={`text-sm ${textColor} opacity-80`}>{currentMilestone.subtitle}</p>
+                  )}
                   
                   {/* Render form fields and buttons in the order they appear */}
                   <div className="space-y-4">
@@ -256,7 +365,7 @@ const FlowPreview = () => {
                               });
                             }}
                             variant={field.buttonAction === 'skip' ? "outline" : "default"}
-                            className={field.buttonAction === 'skip' ? "" : "bg-quickstartify-purple hover:bg-quickstartify-purple/90"}
+                            className={field.buttonAction !== 'skip' ? buttonColor : ""}
                           >
                             {field.buttonLabel || 'Continue'}
                           </Button>
@@ -308,7 +417,7 @@ const FlowPreview = () => {
                       </Button>
                       <Button 
                         onClick={handleMilestoneNext} 
-                        className="bg-quickstartify-purple hover:bg-quickstartify-purple/90"
+                        className={buttonColor}
                       >
                         {activeMilestone === milestones.length - 1 && currentStep === steps.length - 1 ? "Finish" : "Next"}
                       </Button>
@@ -323,17 +432,17 @@ const FlowPreview = () => {
                       typeof nodeData.content === 'string' && nodeData.content.startsWith('<') ? (
                         <RichTextPreview content={nodeData.content} />
                       ) : (
-                        <p>{nodeData.content}</p>
+                        <p className={textColor}>{nodeData.content}</p>
                       )
                     ) : (
-                      <p>{step.content}</p>
+                      <p className={textColor}>{step.content}</p>
                     )}
                   </div>
                   <div className="flex justify-end space-x-2">
                     <Button variant="outline" onClick={handleSkipStep}>Skip</Button>
                     <Button 
                       onClick={handleNextStep}
-                      className="bg-quickstartify-purple hover:bg-quickstartify-purple/90"
+                      className={buttonColor}
                     >
                       Continue
                     </Button>
@@ -363,7 +472,7 @@ const FlowPreview = () => {
             <p className="text-xs mt-1">{step.content || nodeData.content}</p>
             <div className="flex justify-end space-x-2 mt-2">
               <Button size="sm" variant="ghost" onClick={handleSkipStep}>Skip</Button>
-              <Button size="sm" onClick={handleNextStep}>Next</Button>
+              <Button size="sm" onClick={handleNextStep} className={buttonColor}>Next</Button>
             </div>
             <div className={`absolute w-3 h-3 ${modalBackground} transform rotate-45 -bottom-1 left-1/2 -translate-x-1/2`}></div>
           </div>
@@ -392,7 +501,7 @@ const FlowPreview = () => {
                 </div>
               ))}
             </div>
-            <Button className="w-full mt-4" onClick={handleNextStep}>Continue</Button>
+            <Button className="w-full mt-4" onClick={handleNextStep} className={buttonColor}>Continue</Button>
           </div>
         );
         
@@ -400,7 +509,7 @@ const FlowPreview = () => {
         return (
           <div className={`${modalBackground} p-4 rounded-lg shadow-lg ${borderColor} border`}>
             <h3 className={`text-lg font-semibold ${textColor}`}>{step.title || nodeData.label}</h3>
-            <p>{step.content || nodeData.content}</p>
+            <p className={textColor}>{step.content || nodeData.content}</p>
           </div>
         );
     }
@@ -571,7 +680,7 @@ const FlowPreview = () => {
                   variant="outline" 
                   size="icon"
                   onClick={handleNextStep}
-                  disabled={currentStep === steps.length - 1}
+                  disabled={currentStep === steps.length - 1 && (activeMilestone === (steps[currentStep]?.data?.milestones?.length || 0) - 1)}
                 >
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -580,7 +689,7 @@ const FlowPreview = () => {
               <Button variant="outline" size="sm" onClick={handleSkipStep}>
                 <X className="h-4 w-4 mr-1" /> Skip
               </Button>
-              <Button onClick={handleNextStep}>
+              <Button onClick={handleNextStep} className="bg-quickstartify-purple hover:bg-quickstartify-purple/90">
                 <Check className="h-4 w-4 mr-1" /> {currentStep === steps.length - 1 ? "Complete" : "Next"}
               </Button>
             </div>
@@ -594,7 +703,7 @@ const FlowPreview = () => {
               <dl className="space-y-2 text-sm">
                 <div>
                   <dt className="text-muted-foreground">Flow Name</dt>
-                  <dd className="font-medium">{flow?.title}</dd>
+                  <dd className="font-medium">{flow?.title || 'My Flow'}</dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">Total Steps</dt>

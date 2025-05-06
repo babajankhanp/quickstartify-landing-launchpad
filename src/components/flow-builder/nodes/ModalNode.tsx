@@ -20,9 +20,12 @@ export function ModalNode({ data, isConnectable }) {
       {milestonesCount > 0 ? (
         <div className={`text-xs ${textColor} opacity-75`}>
           {milestonesCount} milestone{milestonesCount > 1 ? 's' : ''}
-          {milestones[0]?.title && (
-            <span className="block truncate max-w-[140px]">• {milestones[0].title}</span>
-          )}
+          {milestones.map((milestone, idx) => (
+            <span key={idx} className="block truncate max-w-[140px]">
+              • {milestone.title}
+            </span>
+          )).slice(0, 2)}
+          {milestonesCount > 2 && <span className="block text-xs">+ {milestonesCount - 2} more</span>}
         </div>
       ) : (
         <div className={`text-xs ${textColor} opacity-75 truncate max-w-[140px]`}>{data.content}</div>
