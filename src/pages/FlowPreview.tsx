@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -25,13 +24,40 @@ import { supabase } from "@/integrations/supabase/client";
 import { Flow, FlowStep } from "@/integrations/supabase/models";
 import { RichTextPreview } from "@/components/ui/rich-text-editor";
 
+// Extended FlowStep interface to include data property
+interface ExtendedFlowStep extends FlowStep {
+  data?: {
+    label?: string;
+    content?: string;
+    milestones?: Array<{
+      title: string;
+      subtitle?: string;
+      formFields?: Array<{
+        isButton?: boolean;
+        buttonLabel?: string;
+        buttonAction?: string;
+        name?: string;
+        type?: string;
+        placeholder?: string;
+        richTextContent?: string;
+      }>;
+    }>;
+    styling?: {
+      background?: string;
+      textColor?: string;
+      borderColor?: string;
+      buttonColor?: string;
+    };
+  };
+}
+
 const FlowPreview = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   
   const [flow, setFlow] = useState<Flow | null>(null);
-  const [steps, setSteps] = useState<FlowStep[]>([]);
+  const [steps, setSteps] = useState<ExtendedFlowStep[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [viewMode, setViewMode] = useState("desktop");
@@ -69,7 +95,7 @@ const FlowPreview = () => {
         
         if (stepsError) throw stepsError;
         
-        setSteps(stepsData as FlowStep[]);
+        setSteps(stepsData as ExtendedFlowStep[]);
       } catch (error: any) {
         toast({
           title: "Error loading flow",
@@ -123,7 +149,7 @@ const FlowPreview = () => {
 
   const handleMilestoneNext = () => {
     const currentNode = steps[currentStep];
-    const milestones = currentNode?.milestones || [];
+    const milestones = currentNode?.data?.milestones || [];
     
     if (activeMilestone < milestones.length - 1) {
       setActiveMilestone(activeMilestone + 1);
@@ -158,27 +184,44 @@ const FlowPreview = () => {
         return "w-full max-w-[1200px] h-[800px]";
     }
   };
+
+  // Get background style based on step styling
+  const getModalBackgroundStyle = (step: ExtendedFlowStep) => {
+    const styling = step?.data?.styling || {};
+    
+    if (styling.background?.startsWith('bg-gradient')) {
+      return styling.background;
+    } else if (styling.background) {
+      return styling.background || 'bg-white dark:bg-gray-800';
+    }
+    
+    return 'bg-white dark:bg-gray-800';
+  };
   
   const renderCurrentStep = () => {
     if (steps.length === 0 || currentStep >= steps.length) return null;
     
     const step = steps[currentStep];
     const nodeData = step.data || {};
+    const styling = nodeData.styling || {};
     const milestones = nodeData.milestones || [];
     const currentMilestone = milestones[activeMilestone];
+    const modalBackground = getModalBackgroundStyle(step);
+    const textColor = styling.textColor || 'text-foreground';
+    const borderColor = styling.borderColor || 'border-gray-200 dark:border-gray-700';
     
     switch (step.step_type) {
       case 'modal':
         return (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full">
-              <h3 className="text-lg font-semibold mb-2">{step.title || nodeData.label}</h3>
+            <div className={`${modalBackground} p-6 rounded-lg shadow-lg max-w-md w-full ${borderColor} border`}>
+              <h3 className={`text-lg font-semibold mb-2 ${textColor}`}>{step.title || nodeData.label}</h3>
               
               {currentMilestone ? (
                 // Render milestone content
                 <div className="space-y-4">
                   <div className="mb-4">
-                    <h4 className="font-medium">{currentMilestone.title}</h4>
+                    <h4 className={`font-medium ${textColor}`}>{currentMilestone.title}</h4>
                     {currentMilestone.subtitle && <p className="text-sm text-muted-foreground">{currentMilestone.subtitle}</p>}
                   </div>
                   
@@ -301,14 +344,14 @@ const FlowPreview = () => {
         
       case 'tooltip':
         return (
-          <div className="absolute bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg max-w-xs">
-            <h3 className="text-sm font-semibold">{step.title || nodeData.label}</h3>
+          <div className={`absolute ${modalBackground} p-3 rounded-lg shadow-lg max-w-xs ${borderColor} border`}>
+            <h3 className={`text-sm font-semibold ${textColor}`}>{step.title || nodeData.label}</h3>
             <p className="text-xs mt-1">{step.content || nodeData.content}</p>
             <div className="flex justify-end space-x-2 mt-2">
               <Button size="sm" variant="ghost" onClick={handleSkipStep}>Skip</Button>
               <Button size="sm" onClick={handleNextStep}>Next</Button>
             </div>
-            <div className="absolute w-3 h-3 bg-white dark:bg-gray-800 transform rotate-45 -bottom-1 left-1/2 -translate-x-1/2"></div>
+            <div className={`absolute w-3 h-3 ${modalBackground} transform rotate-45 -bottom-1 left-1/2 -translate-x-1/2`}></div>
           </div>
         );
         
@@ -321,8 +364,8 @@ const FlowPreview = () => {
         
       case 'checklist':
         return (
-          <div className="absolute right-4 top-20 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
-            <h3 className="text-lg font-semibold mb-2">{step.title || nodeData.label}</h3>
+          <div className={`absolute right-4 top-20 ${modalBackground} p-4 rounded-lg shadow-lg ${borderColor} border`}>
+            <h3 className={`text-lg font-semibold mb-2 ${textColor}`}>{step.title || nodeData.label}</h3>
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="flex items-center">
@@ -341,8 +384,8 @@ const FlowPreview = () => {
         
       default:
         return (
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
-            <h3 className="text-lg font-semibold">{step.title || nodeData.label}</h3>
+          <div className={`${modalBackground} p-4 rounded-lg shadow-lg ${borderColor} border`}>
+            <h3 className={`text-lg font-semibold ${textColor}`}>{step.title || nodeData.label}</h3>
             <p>{step.content || nodeData.content}</p>
           </div>
         );

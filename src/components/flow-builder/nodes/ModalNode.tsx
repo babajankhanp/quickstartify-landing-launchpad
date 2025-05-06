@@ -4,9 +4,11 @@ import { Handle, Position } from '@xyflow/react';
 export function ModalNode({ data, isConnectable }) {
   const milestones = data.milestones || [];
   const milestonesCount = milestones.length;
+  const nodeBackground = data.styling?.background || 'bg-white dark:bg-gray-800';
+  const nodeBorder = data.styling?.border || 'border-purple-200 dark:border-purple-900';
   
   return (
-    <div className="modal-node px-4 py-3 bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-900 rounded-md shadow-sm">
+    <div className={`modal-node px-4 py-3 ${nodeBackground} border ${nodeBorder} rounded-md shadow-sm`}>
       <Handle
         type="target"
         position={Position.Top}
