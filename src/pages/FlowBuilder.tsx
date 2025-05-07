@@ -22,6 +22,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Save, 
   Undo2, 
@@ -54,7 +55,7 @@ import { FlowBuilderToolbar } from '@/components/flow-builder/FlowBuilderToolbar
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from "@/integrations/supabase/client";
-import { Flow, FlowStep } from '@/integrations/supabase/models';
+import { Flow, FlowStep, Milestone, StepAction } from '@/integrations/supabase/models';
 
 // Define custom node types
 const nodeTypes = {
@@ -106,7 +107,16 @@ const initialNodes = [
             }
           ]
         }
-      ]
+      ],
+      styling: {
+        background: 'bg-white',
+        border: 'border-purple-200',
+        textColor: 'text-foreground'
+      },
+      dom_selector: '',
+      page_url: '',
+      actions: [],
+      targeting_rules: {}
     },
   },
 ];
@@ -180,7 +190,20 @@ const FlowBuilder = () => {
         id: `${nodeType}-${Date.now()}`,
         type: nodeType,
         position,
-        data: { label, content: `New ${label} content` },
+        data: { 
+          label, 
+          content: `New ${label} content`,
+          milestones: [],
+          styling: {
+            background: 'bg-white',
+            border: 'border-purple-200',
+            textColor: 'text-foreground'
+          },
+          dom_selector: '',
+          page_url: '',
+          actions: [],
+          targeting_rules: {}
+        },
       };
       
       setNodes((nds) => nds.concat(newNode));
@@ -220,34 +243,74 @@ const FlowBuilder = () => {
           .order('position', { ascending: true });
         
         if (stepsError) throw stepsError;
-        setFlowSteps(stepsData || []);
         
-        if (stepsData && stepsData.length > 0) {
+        // Set flow steps converting from DB model to app model
+        const appFlowSteps = stepsData?.map(step => {
+          return {
+            ...step,
+            step_type: step.step_type as FlowStep['step_type'], // Cast to specific type
+            milestones: (step.styling && typeof step.styling === 'object' && 'milestones' in step.styling) 
+              ? step.styling.milestones as Milestone[]
+              : [],
+            actions: (step.styling && typeof step.styling === 'object' && 'actions' in step.styling) 
+              ? step.styling.actions as StepAction[]
+              : []
+          } as FlowStep;
+        }) || [];
+        
+        setFlowSteps(appFlowSteps);
+        
+        if (appFlowSteps && appFlowSteps.length > 0) {
           // Convert flow steps to nodes and edges
-          const flowNodes = stepsData.map(step => ({
-            id: step.id,
-            type: step.step_type,
-            position: {
-              x: (step.styling?.position_x || 0),
-              y: (step.styling?.position_y || 0),
-            },
-            data: { 
-              label: step.title,
-              content: step.content,
-              milestones: step.milestones || [],
-              actions: step.actions || [],
-              styling: step.styling || {},
-              dom_selector: step.dom_selector,
-              page_url: step.page_url,
-              targeting_rules: step.targeting_rules
-            }
-          }));
+          const flowNodes = appFlowSteps.map(step => {
+            const posX = step.styling && typeof step.styling === 'object' && 'position_x' in step.styling 
+              ? Number(step.styling.position_x)
+              : 0;
+              
+            const posY = step.styling && typeof step.styling === 'object' && 'position_y' in step.styling 
+              ? Number(step.styling.position_y)
+              : 0;
+              
+            return {
+              id: step.id,
+              type: step.step_type,
+              position: {
+                x: posX,
+                y: posY,
+              },
+              data: { 
+                label: step.title,
+                content: step.content,
+                milestones: step.milestones || [],
+                actions: step.actions || [],
+                styling: step.styling && typeof step.styling === 'object' 
+                  ? {
+                      background: step.styling.background || 'bg-white',
+                      border: step.styling.border || 'border-purple-200',
+                      textColor: step.styling.textColor || 'text-foreground'
+                    }
+                  : {
+                      background: 'bg-white',
+                      border: 'border-purple-200',
+                      textColor: 'text-foreground'
+                    },
+                dom_selector: step.dom_selector || '',
+                page_url: step.page_url || '',
+                targeting_rules: step.targeting_rules || {}
+              }
+            };
+          });
 
           // Create edges from flow step connections if they exist
           const flowEdges = [];
-          stepsData.forEach(step => {
-            if (step.styling?.connections) {
-              step.styling.connections.forEach(connection => {
+          appFlowSteps.forEach(step => {
+            const connections = step.styling && 
+                               typeof step.styling === 'object' && 
+                               'connections' in step.styling ? 
+                               step.styling.connections : [];
+                               
+            if (connections && Array.isArray(connections)) {
+              connections.forEach((connection: any) => {
                 flowEdges.push({
                   id: `e-${step.id}-${connection.target}`,
                   source: step.id,
@@ -370,13 +433,13 @@ const FlowBuilder = () => {
           position: index,
           dom_selector: node.data.dom_selector || null,
           page_url: node.data.page_url || null,
-          milestones: node.data.milestones || [],
-          actions: node.data.actions || [],
           styling: {
             ...node.data.styling,
             position_x: node.position.x,
             position_y: node.position.y,
-            connections: nodeConnections
+            connections: nodeConnections,
+            milestones: node.data.milestones || [],
+            actions: node.data.actions || []
           },
           targeting_rules: node.data.targeting_rules || {}
         };

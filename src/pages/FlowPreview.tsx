@@ -8,11 +8,36 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Flow, FlowStep, Milestone, FormField, BrandingConfig } from "@/integrations/supabase/models";
+import { Flow, FlowStep, Milestone, FormField } from "@/integrations/supabase/models";
 import { RichTextPreview } from "@/components/ui/rich-text-editor";
 
-interface ExtendedFlowStep extends FlowStep {
+// Define our extended flow step type to add milestones
+interface ExtendedFlowStep extends Omit<FlowStep, 'step_type'> {
+  step_type: string;
   milestones?: Milestone[];
+}
+
+// Define branding config interface for our preview
+interface BrandingConfig {
+  logo_url?: string;
+  primary_color?: string;
+  secondary_color?: string;
+  background_style?: 'color' | 'gradient' | 'image';
+  background_color?: string;
+  background_gradient?: string;
+  background_image_url?: string;
+  animation_style?: 'fade' | 'slide' | 'zoom' | 'flip' | 'bounce';
+  card_style?: 'rounded' | 'sharp' | 'floating' | 'bordered';
+  font_family?: string;
+  footer_links?: FooterLink[];
+  privacy_policy_url?: string;
+  terms_url?: string;
+  custom_css?: string;
+}
+
+interface FooterLink {
+  text: string;
+  url: string;
 }
 
 export default function FlowPreview() {
@@ -41,7 +66,23 @@ export default function FlowPreview() {
         
         if (flowError) throw flowError;
         setFlow(flowData);
-        setBrandingConfig(flowData.branding_config || null);
+        
+        // Get branding config from database or flow data
+        const brandingConfigData = flowData.branding_config || {
+          logo_url: '/placeholder.svg',
+          primary_color: '#9b87f5',
+          secondary_color: '#7e69ab',
+          background_style: 'gradient',
+          background_gradient: 'linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%)',
+          card_style: 'rounded',
+          font_family: 'Inter, sans-serif',
+          footer_links: [
+            { text: 'Terms', url: '#' },
+            { text: 'Privacy', url: '#' }
+          ]
+        };
+        
+        setBrandingConfig(brandingConfigData);
         
         // Fetch flow steps
         const { data: stepsData, error: stepsError } = await supabase
@@ -51,11 +92,22 @@ export default function FlowPreview() {
           .order('position', { ascending: true });
         
         if (stepsError) throw stepsError;
-        setSteps(stepsData || []);
+        
+        // Process step data to extract milestones from styling
+        const processedSteps = stepsData?.map(step => {
+          const styling = typeof step.styling === 'object' ? step.styling : {};
+          
+          return {
+            ...step,
+            milestones: styling && 'milestones' in styling ? styling.milestones : []
+          } as ExtendedFlowStep;
+        }) || [];
+        
+        setSteps(processedSteps);
         
         // Set current step to the first one
-        if (stepsData && stepsData.length > 0) {
-          setCurrentStep(stepsData[0]);
+        if (processedSteps && processedSteps.length > 0) {
+          setCurrentStep(processedSteps[0]);
         }
       } catch (error) {
         console.error('Error loading flow for preview:', error);
@@ -465,11 +517,14 @@ export default function FlowPreview() {
         {/* Milestone indicator */}
         {currentStep.milestones && currentStep.milestones.length > 1 && (
           <div className="px-6">
-            <div className="milestone-indicator">
+            <div className="flex gap-1 justify-center">
               {currentStep.milestones.map((m, idx) => (
                 <div 
                   key={m.id} 
-                  className={`milestone-indicator-dot ${idx <= currentMilestoneIndex ? 'active' : 'inactive'}`}
+                  className={`h-1.5 rounded-full flex-grow max-w-8 ${
+                    idx === currentMilestoneIndex ? 'bg-quickstartify-purple' : 
+                    idx < currentMilestoneIndex ? 'bg-quickstartify-purple/50' : 'bg-gray-200'
+                  }`}
                 />
               ))}
             </div>
