@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -13,8 +13,8 @@ import {
   MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -38,7 +38,8 @@ import {
   Database,
   TestTube,
   Clock,
-  LayoutGrid
+  LayoutGrid,
+  Loader2
 } from 'lucide-react';
 import { TooltipNode } from '@/components/flow-builder/nodes/TooltipNode';
 import { ModalNode } from '@/components/flow-builder/nodes/ModalNode';
@@ -52,6 +53,8 @@ import { NodeEditorModal } from '@/components/flow-builder/NodeEditorModal';
 import { FlowBuilderToolbar } from '@/components/flow-builder/FlowBuilderToolbar';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from "@/integrations/supabase/client";
+import { Flow, FlowStep } from '@/integrations/supabase/models';
 
 // Define custom node types
 const nodeTypes = {
@@ -65,7 +68,7 @@ const nodeTypes = {
   abSwitch: ABSwitchNode,
 };
 
-// Default flow initial nodes
+// Default flow initial nodes for new flows
 const initialNodes = [
   {
     id: 'start',
@@ -74,6 +77,36 @@ const initialNodes = [
     data: { 
       label: 'Welcome Modal',
       content: 'Welcome to your onboarding flow!',
+      milestones: [
+        {
+          id: 'welcome-milestone-1',
+          title: 'Welcome',
+          subtitle: 'Get started with our product',
+          formFields: [
+            {
+              id: 'welcome-field-1',
+              name: 'name',
+              type: 'text',
+              required: true,
+              validation: '',
+              placeholder: 'Enter your name',
+              isButton: false
+            },
+            {
+              id: 'welcome-button-1',
+              name: 'start-button',
+              type: 'button',
+              required: false,
+              validation: '',
+              placeholder: '',
+              isButton: true,
+              buttonLabel: 'Get Started',
+              buttonAction: 'next',
+              buttonCollectMetrics: true
+            }
+          ]
+        }
+      ]
     },
   },
 ];
@@ -83,15 +116,21 @@ const initialEdges = [];
 
 const FlowBuilder = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState(null);
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
   const [flowName, setFlowName] = useState("My Onboarding Flow");
+  const [flowDescription, setFlowDescription] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [flow, setFlow] = useState<Flow | null>(null);
+  const [flowSteps, setFlowSteps] = useState<FlowStep[]>([]);
   
   // Handle node selection
   const onNodeClick = useCallback((_, node) => {
@@ -149,13 +188,221 @@ const FlowBuilder = () => {
     [reactFlowInstance, setNodes]
   );
   
+  // Load flow data from Supabase
+  useEffect(() => {
+    async function fetchFlowData() {
+      if (!id || !user) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        // Fetch flow data
+        const { data: flowData, error: flowError } = await supabase
+          .from('flows')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (flowError) throw flowError;
+        
+        setFlow(flowData);
+        setFlowName(flowData.title);
+        setFlowDescription(flowData.description || "");
+        
+        // Fetch flow steps
+        const { data: stepsData, error: stepsError } = await supabase
+          .from('flow_steps')
+          .select('*')
+          .eq('flow_id', id)
+          .order('position', { ascending: true });
+        
+        if (stepsError) throw stepsError;
+        setFlowSteps(stepsData || []);
+        
+        if (stepsData && stepsData.length > 0) {
+          // Convert flow steps to nodes and edges
+          const flowNodes = stepsData.map(step => ({
+            id: step.id,
+            type: step.step_type,
+            position: {
+              x: (step.styling?.position_x || 0),
+              y: (step.styling?.position_y || 0),
+            },
+            data: { 
+              label: step.title,
+              content: step.content,
+              milestones: step.milestones || [],
+              actions: step.actions || [],
+              styling: step.styling || {},
+              dom_selector: step.dom_selector,
+              page_url: step.page_url,
+              targeting_rules: step.targeting_rules
+            }
+          }));
+
+          // Create edges from flow step connections if they exist
+          const flowEdges = [];
+          stepsData.forEach(step => {
+            if (step.styling?.connections) {
+              step.styling.connections.forEach(connection => {
+                flowEdges.push({
+                  id: `e-${step.id}-${connection.target}`,
+                  source: step.id,
+                  target: connection.target,
+                  markerEnd: {
+                    type: MarkerType.ArrowClosed,
+                  },
+                  animated: true,
+                  style: { stroke: '#9b87f5' },
+                });
+              });
+            }
+          });
+
+          setNodes(flowNodes.length > 0 ? flowNodes : initialNodes);
+          setEdges(flowEdges);
+        }
+      } catch (error) {
+        console.error('Error loading flow:', error);
+        toast({
+          title: "Error loading flow",
+          description: "Could not load flow data",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchFlowData();
+  }, [id, user]);
+  
   // Handle saving flow
-  const saveFlow = () => {
-    // Here you would save the flow data to your backend
-    toast({
-      title: "Flow Saved",
-      description: "Your flow has been saved successfully",
-    });
+  const saveFlow = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to save flows",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!flowName.trim()) {
+      toast({
+        title: "Flow name required",
+        description: "Please provide a name for your flow",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setSaving(true);
+    
+    try {
+      // Create or update the flow
+      let flowId = id;
+      
+      if (!flowId || flowId === 'new') {
+        // Create a new flow
+        const { data: newFlow, error: flowError } = await supabase
+          .from('flows')
+          .insert({
+            title: flowName,
+            description: flowDescription,
+            is_draft: true,
+            is_active: false,
+            user_id: user.id,
+            version: 1
+          })
+          .select();
+        
+        if (flowError) throw flowError;
+        
+        flowId = newFlow[0].id;
+        setFlow(newFlow[0]);
+        
+        // Update the URL to the new flow ID
+        navigate(`/builder/${flowId}`, { replace: true });
+      } else {
+        // Update existing flow
+        const { error: updateError } = await supabase
+          .from('flows')
+          .update({
+            title: flowName,
+            description: flowDescription,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', flowId);
+        
+        if (updateError) throw updateError;
+      }
+
+      // Delete existing steps for this flow (to be replaced)
+      if (flowId !== 'new') {
+        const { error: deleteError } = await supabase
+          .from('flow_steps')
+          .delete()
+          .eq('flow_id', flowId);
+        
+        if (deleteError) throw deleteError;
+      }
+      
+      // Save all nodes as flow steps
+      const flowSteps = nodes.map((node, index) => {
+        // Extract connections for this node
+        const nodeConnections = edges
+          .filter(edge => edge.source === node.id)
+          .map(edge => ({
+            target: edge.target,
+            condition: edge.data?.condition
+          }));
+        
+        return {
+          id: node.id,
+          flow_id: flowId,
+          title: node.data.label || `Step ${index + 1}`,
+          content: node.data.content || null,
+          step_type: node.type,
+          position: index,
+          dom_selector: node.data.dom_selector || null,
+          page_url: node.data.page_url || null,
+          milestones: node.data.milestones || [],
+          actions: node.data.actions || [],
+          styling: {
+            ...node.data.styling,
+            position_x: node.position.x,
+            position_y: node.position.y,
+            connections: nodeConnections
+          },
+          targeting_rules: node.data.targeting_rules || {}
+        };
+      });
+      
+      const { error: stepsError } = await supabase
+        .from('flow_steps')
+        .insert(flowSteps);
+      
+      if (stepsError) throw stepsError;
+      
+      toast({
+        title: "Flow saved",
+        description: "Your flow has been saved successfully"
+      });
+      
+    } catch (error) {
+      console.error('Error saving flow:', error);
+      toast({
+        title: "Error saving flow",
+        description: "Could not save flow data",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
   };
   
   // Update node data when edited in config panel
@@ -170,19 +417,33 @@ const FlowBuilder = () => {
 
   // Delete a node
   const deleteNode = (nodeId) => {
+    // Remove any edges connected to this node
+    setEdges(edges.filter(edge => edge.source !== nodeId && edge.target !== nodeId));
+    
+    // Remove the node
     setNodes(nodes.filter(node => node.id !== nodeId));
+    
     if (selectedNode && selectedNode.id === nodeId) {
       setSelectedNode(null);
       setIsEditorModalOpen(false);
     }
   };
 
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-quickstartify-purple" />
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <FlowBuilderToolbar 
         flowName={flowName} 
         onFlowNameChange={setFlowName} 
-        onSave={saveFlow} 
+        onSave={saveFlow}
+        saving={saving}
       />
       
       <div className="flex flex-1 overflow-hidden">
@@ -293,6 +554,17 @@ const FlowBuilder = () => {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Flow Settings</h3>
             
+            <div>
+              <Label htmlFor="flowDescription">Description</Label>
+              <Textarea 
+                id="flowDescription" 
+                value={flowDescription} 
+                onChange={(e) => setFlowDescription(e.target.value)}
+                placeholder="Enter flow description"
+                className="mt-1 h-24"
+              />
+            </div>
+            
             <div className="flex items-center justify-between">
               <Label htmlFor="publishToggle">Publish Flow</Label>
               <Switch id="publishToggle" />
@@ -349,8 +621,17 @@ const FlowBuilder = () => {
                 <Button variant="outline" size="sm">
                   <ZoomOut className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="sm">
-                  <Save className="h-4 w-4" onClick={saveFlow} />
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  disabled={saving}
+                  onClick={saveFlow}
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </Panel>

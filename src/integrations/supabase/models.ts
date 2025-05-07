@@ -1,3 +1,4 @@
+
 export interface Flow {
   id: string;
   user_id: string;
@@ -8,6 +9,29 @@ export interface Flow {
   version: number;
   created_at: string;
   updated_at: string;
+  branding_config?: BrandingConfig | null;
+}
+
+export interface BrandingConfig {
+  logo_url?: string;
+  primary_color?: string;
+  secondary_color?: string;
+  background_style?: 'color' | 'gradient' | 'image';
+  background_color?: string;
+  background_gradient?: string;
+  background_image_url?: string;
+  animation_style?: 'fade' | 'slide' | 'zoom' | 'flip' | 'bounce';
+  card_style?: 'rounded' | 'sharp' | 'floating' | 'bordered';
+  font_family?: string;
+  footer_links?: FooterLink[];
+  privacy_policy_url?: string;
+  terms_url?: string;
+  custom_css?: string;
+}
+
+export interface FooterLink {
+  text: string;
+  url: string;
 }
 
 export interface FlowStep {
@@ -23,6 +47,45 @@ export interface FlowStep {
   page_url?: string | null;
   targeting_rules?: Record<string, any>;
   styling?: Record<string, any>;
+  milestones?: Milestone[];
+  actions?: StepAction[];
+}
+
+export interface Milestone {
+  id: string;
+  title: string;
+  subtitle?: string;
+  content?: string;
+  formFields?: FormField[];
+  isCompleted?: boolean;
+}
+
+export interface FormField {
+  id: string;
+  name: string;
+  type: string;
+  required: boolean;
+  validation?: string;
+  placeholder?: string;
+  richTextContent?: string;
+  isButton?: boolean;
+  buttonAction?: string;
+  buttonApiEndpoint?: string;
+  buttonCollectMetrics?: boolean;
+  buttonLabel?: string;
+  options?: {label: string, value: string}[];
+}
+
+export interface StepAction {
+  id: string;
+  type: 'api_call' | 'analytics' | 'navigation' | 'custom';
+  name: string;
+  endpoint?: string;
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  headers?: Record<string, string>;
+  payload?: Record<string, any>;
+  trigger?: 'on_view' | 'on_complete' | 'on_skip' | 'on_button_click';
+  button_id?: string;
 }
 
 export interface FlowVariation {

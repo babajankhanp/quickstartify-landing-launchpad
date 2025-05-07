@@ -13,8 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ImageIcon, Link, Plus, Trash2, CheckSquare, FileText } from "lucide-react";
-import { useState } from "react";
+import { ImageIcon, Link, Plus, Trash2, CheckSquare, FileText, Send, BarChart, Database } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Switch } from "@/components/ui/switch";
 import { RichTextEditor, RichTextPreview } from "@/components/ui/rich-text-editor";
 
@@ -40,48 +40,50 @@ type MilestoneType = {
   formFields: FormFieldType[];
 };
 
+type ActionType = {
+  id: string;
+  type: 'api_call' | 'analytics' | 'navigation' | 'custom';
+  name: string;
+  endpoint?: string;
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  headers?: Record<string, string>;
+  payload?: Record<string, any>;
+  trigger?: 'on_view' | 'on_complete' | 'on_skip' | 'on_button_click';
+  button_id?: string;
+};
+
 export function NodeEditorModal({ node, updateNodeData, isOpen, onClose, deleteNode }) {
   const [label, setLabel] = useState(node?.data?.label || '');
   const [content, setContent] = useState(node?.data?.content || '');
-  const [formFields, setFormFields] = useState<FormFieldType[]>(node?.data?.formFields || []);
   const [milestones, setMilestones] = useState<MilestoneType[]>(node?.data?.milestones || []);
+  const [actions, setActions] = useState<ActionType[]>(node?.data?.actions || []);
   const [collectMetrics, setCollectMetrics] = useState(node?.data?.collectMetrics || false);
   const [activeMilestone, setActiveMilestone] = useState<string | null>(null);
   
+  // Handle clicks outside of milestones modal
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (activeMilestone && !document.querySelector('.milestone-editor')?.contains(event.target as Node)) {
+        // Auto-save milestone data when clicking outside
+        // This is handled by the existing state already
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [activeMilestone]);
+
   const handleSave = () => {
     updateNodeData({ 
       label, 
       content,
-      formFields,
       milestones,
+      actions,
       collectMetrics
     });
     onClose();
-  };
-
-  // Form Fields Management
-  const addFormField = () => {
-    const newField = {
-      id: `field-${Date.now()}`,
-      name: `Field ${formFields.length + 1}`,
-      type: 'text',
-      required: false,
-      validation: '',
-      placeholder: 'Enter value',
-    };
-    setFormFields([...formFields, newField]);
-  };
-
-  const updateFormField = (index: number, field: Partial<FormFieldType>) => {
-    const updatedFields = [...formFields];
-    updatedFields[index] = { ...updatedFields[index], ...field };
-    setFormFields(updatedFields);
-  };
-
-  const removeFormField = (index: number) => {
-    const updatedFields = [...formFields];
-    updatedFields.splice(index, 1);
-    setFormFields(updatedFields);
   };
 
   // Milestones Management
@@ -107,6 +109,29 @@ export function NodeEditorModal({ node, updateNodeData, isOpen, onClose, deleteN
     updatedMilestones.splice(index, 1);
     setMilestones(updatedMilestones);
     setActiveMilestone(null);
+  };
+
+  // Actions Management
+  const addAction = () => {
+    const newAction = {
+      id: `action-${Date.now()}`,
+      type: 'api_call' as const,
+      name: `Action ${actions.length + 1}`,
+      trigger: 'on_view' as const
+    };
+    setActions([...actions, newAction]);
+  };
+
+  const updateAction = (index: number, action: Partial<ActionType>) => {
+    const updatedActions = [...actions];
+    updatedActions[index] = { ...updatedActions[index], ...action };
+    setActions(updatedActions);
+  };
+
+  const removeAction = (index: number) => {
+    const updatedActions = [...actions];
+    updatedActions.splice(index, 1);
+    setActions(updatedActions);
   };
 
   // Milestone Form Fields Management
@@ -197,7 +222,7 @@ export function NodeEditorModal({ node, updateNodeData, isOpen, onClose, deleteN
           <TabsList className="w-full">
             <TabsTrigger value="content" className="flex-1">Content</TabsTrigger>
             <TabsTrigger value="milestones" className="flex-1">Milestones</TabsTrigger>
-            <TabsTrigger value="form" className="flex-1">Form Schema</TabsTrigger>
+            <TabsTrigger value="actions" className="flex-1">Actions</TabsTrigger>
             <TabsTrigger value="styling" className="flex-1">Styling</TabsTrigger>
           </TabsList>
           
@@ -237,6 +262,27 @@ export function NodeEditorModal({ node, updateNodeData, isOpen, onClose, deleteN
                 Add Link
               </Button>
             </div>
+
+            {milestones.length > 0 && (
+              <div className="mt-4 p-3 border rounded-md">
+                <h3 className="text-sm font-medium mb-2">Milestones Overview</h3>
+                <div className="space-y-2">
+                  {milestones.map((milestone, idx) => (
+                    <div key={milestone.id} className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{milestone.title}</span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setActiveMilestone(milestone.id)}
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2 pt-4">
               <div className="flex items-center justify-between">
@@ -294,7 +340,7 @@ export function NodeEditorModal({ node, updateNodeData, isOpen, onClose, deleteN
                     
                     const milestone = milestones[milestoneIndex];
                     return (
-                      <div className="p-3 border rounded-md space-y-3 mt-4">
+                      <div className="p-3 border rounded-md space-y-3 mt-4 milestone-editor">
                         <div className="flex justify-between items-center">
                           <h4 className="font-medium">Edit Milestone</h4>
                           <Button 
@@ -547,120 +593,185 @@ export function NodeEditorModal({ node, updateNodeData, isOpen, onClose, deleteN
             </Card>
           </TabsContent>
           
-          <TabsContent value="form" className="space-y-4 pt-4">
+          <TabsContent value="actions" className="space-y-4 pt-4">
             <Card className="p-4 bg-muted/30">
-              <Label className="text-lg font-medium mb-4 block">Form Fields</Label>
+              <div className="flex justify-between items-center mb-4">
+                <Label className="text-lg font-medium">Step Actions</Label>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={addAction}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Action
+                </Button>
+              </div>
               
-              {formFields.length === 0 ? (
+              {actions.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  No form fields added yet. Add your first field below.
+                  No actions added yet. Actions allow your steps to communicate with external systems.
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {formFields.map((field, index) => (
-                    <div key={field.id} className="p-3 border rounded-md space-y-3">
-                      <div className="flex justify-between items-center">
-                        <h4 className="font-medium">Field {index + 1}</h4>
+                <div className="space-y-4">
+                  {actions.map((action, index) => (
+                    <Card key={action.id} className="p-4">
+                      <div className="flex justify-between items-center mb-3">
+                        <div className="flex items-center">
+                          {action.type === 'api_call' && <Send className="h-4 w-4 mr-2" />}
+                          {action.type === 'analytics' && <BarChart className="h-4 w-4 mr-2" />}
+                          {action.type === 'custom' && <Database className="h-4 w-4 mr-2" />}
+                          <h4 className="font-medium">{action.name}</h4>
+                        </div>
                         <Button 
                           variant="ghost" 
                           size="icon"
                           className="h-8 w-8 text-destructive"
-                          onClick={() => removeFormField(index)}
+                          onClick={() => removeAction(index)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label htmlFor={`field-name-${index}`}>Name</Label>
-                          <Input
-                            id={`field-name-${index}`}
-                            value={field.name}
-                            onChange={(e) => updateFormField(index, { name: e.target.value })}
-                          />
-                        </div>
-                        
-                        <div className="space-y-1">
-                          <Label htmlFor={`field-type-${index}`}>Field Type</Label>
-                          <Select 
-                            value={field.type} 
-                            onValueChange={(value) => updateFormField(index, { type: value })}
-                          >
-                            <SelectTrigger id={`field-type-${index}`}>
-                              <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="text">Text</SelectItem>
-                              <SelectItem value="email">Email</SelectItem>
-                              <SelectItem value="number">Number</SelectItem>
-                              <SelectItem value="textarea">Textarea</SelectItem>
-                              <SelectItem value="richtext">Rich Text</SelectItem>
-                              <SelectItem value="select">Select</SelectItem>
-                              <SelectItem value="checkbox">Checkbox</SelectItem>
-                              <SelectItem value="button">Button</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        {field.type === 'richtext' && (
-                          <div className="col-span-2">
-                            <Label htmlFor={`field-richtext-${index}`}>Rich Text Content</Label>
-                            <RichTextEditor
-                              value={field.richTextContent || ''}
-                              onChange={(content) => updateFormField(index, { richTextContent: content })}
-                              placeholder="Enter rich content"
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor={`action-name-${index}`}>Name</Label>
+                            <Input
+                              id={`action-name-${index}`}
+                              value={action.name}
+                              onChange={(e) => updateAction(index, { name: e.target.value })}
                             />
-                            {field.richTextContent && (
-                              <div className="mt-2">
-                                <Label className="text-sm mb-1 block">Preview</Label>
-                                <RichTextPreview content={field.richTextContent} />
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor={`action-type-${index}`}>Action Type</Label>
+                            <Select 
+                              value={action.type} 
+                              onValueChange={(value: any) => updateAction(index, { type: value })}
+                            >
+                              <SelectTrigger id={`action-type-${index}`}>
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="api_call">API Call</SelectItem>
+                                <SelectItem value="analytics">Analytics</SelectItem>
+                                <SelectItem value="navigation">Navigation</SelectItem>
+                                <SelectItem value="custom">Custom</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor={`action-trigger-${index}`}>Trigger</Label>
+                            <Select 
+                              value={action.trigger} 
+                              onValueChange={(value: any) => updateAction(index, { trigger: value })}
+                            >
+                              <SelectTrigger id={`action-trigger-${index}`}>
+                                <SelectValue placeholder="Select trigger" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="on_view">On View</SelectItem>
+                                <SelectItem value="on_complete">On Complete</SelectItem>
+                                <SelectItem value="on_skip">On Skip</SelectItem>
+                                <SelectItem value="on_button_click">On Button Click</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          {action.trigger === 'on_button_click' && (
+                            <div>
+                              <Label htmlFor={`action-button-${index}`}>Button ID</Label>
+                              <Input
+                                id={`action-button-${index}`}
+                                value={action.button_id || ''}
+                                onChange={(e) => updateAction(index, { button_id: e.target.value })}
+                                placeholder="Enter button ID"
+                              />
+                            </div>
+                          )}
+                        </div>
+                        
+                        {action.type === 'api_call' && (
+                          <div className="space-y-3 mt-2">
+                            <div>
+                              <Label htmlFor={`action-endpoint-${index}`}>API Endpoint</Label>
+                              <Input
+                                id={`action-endpoint-${index}`}
+                                value={action.endpoint || ''}
+                                onChange={(e) => updateAction(index, { endpoint: e.target.value })}
+                                placeholder="https://api.example.com/endpoint"
+                              />
+                            </div>
+                            
+                            <div>
+                              <Label htmlFor={`action-method-${index}`}>Method</Label>
+                              <Select 
+                                value={action.method || 'GET'} 
+                                onValueChange={(value: any) => updateAction(index, { method: value })}
+                              >
+                                <SelectTrigger id={`action-method-${index}`}>
+                                  <SelectValue placeholder="Select method" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="GET">GET</SelectItem>
+                                  <SelectItem value="POST">POST</SelectItem>
+                                  <SelectItem value="PUT">PUT</SelectItem>
+                                  <SelectItem value="DELETE">DELETE</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            <div>
+                              <Label htmlFor={`action-payload-${index}`}>Payload (JSON)</Label>
+                              <Textarea
+                                id={`action-payload-${index}`}
+                                value={action.payload ? JSON.stringify(action.payload, null, 2) : ''}
+                                onChange={(e) => {
+                                  try {
+                                    const payload = e.target.value ? JSON.parse(e.target.value) : {};
+                                    updateAction(index, { payload });
+                                  } catch (error) {
+                                    // Invalid JSON, don't update
+                                  }
+                                }}
+                                placeholder='{"key": "value"}'
+                                className="font-mono text-xs"
+                                rows={3}
+                              />
+                            </div>
+                          </div>
+                        )}
+                        
+                        {action.type === 'analytics' && (
+                          <div className="space-y-3 mt-2">
+                            <div className="flex items-center space-x-2">
+                              <Switch 
+                                id={`action-use-supabase-${index}`}
+                                checked={!!action.endpoint?.includes('supabase')}
+                                onCheckedChange={(checked) => updateAction(index, { endpoint: checked ? 'supabase' : '' })}
+                              />
+                              <Label htmlFor={`action-use-supabase-${index}`}>Use Supabase Analytics</Label>
+                            </div>
+                            
+                            {!action.endpoint?.includes('supabase') && (
+                              <div>
+                                <Label htmlFor={`action-analytics-endpoint-${index}`}>Custom Analytics Endpoint</Label>
+                                <Input
+                                  id={`action-analytics-endpoint-${index}`}
+                                  value={action.endpoint || ''}
+                                  onChange={(e) => updateAction(index, { endpoint: e.target.value })}
+                                  placeholder="https://analytics.example.com/event"
+                                />
                               </div>
                             )}
                           </div>
                         )}
-                        
-                        <div className="space-y-1">
-                          <Label htmlFor={`field-placeholder-${index}`}>Placeholder</Label>
-                          <Input
-                            id={`field-placeholder-${index}`}
-                            value={field.placeholder}
-                            onChange={(e) => updateFormField(index, { placeholder: e.target.value })}
-                          />
-                        </div>
-                        
-                        <div className="space-y-1">
-                          <Label htmlFor={`field-validation-${index}`}>Validation</Label>
-                          <Input
-                            id={`field-validation-${index}`}
-                            value={field.validation}
-                            onChange={(e) => updateFormField(index, { validation: e.target.value })}
-                            placeholder="regex pattern or rules"
-                          />
-                        </div>
-                        
-                        <div className="flex items-center space-x-2 pt-4">
-                          <Switch 
-                            id={`field-required-${index}`}
-                            checked={field.required}
-                            onCheckedChange={(checked) => updateFormField(index, { required: checked })}
-                          />
-                          <Label htmlFor={`field-required-${index}`}>Required field</Label>
-                        </div>
                       </div>
-                    </div>
+                    </Card>
                   ))}
                 </div>
               )}
-              
-              <Button 
-                variant="outline" 
-                className="w-full mt-4"
-                onClick={addFormField}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Form Field
-              </Button>
             </Card>
           </TabsContent>
           
