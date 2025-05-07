@@ -1,13 +1,14 @@
 
 import { Handle, Position } from '@xyflow/react';
 import { Database } from 'lucide-react';
-import { Milestone } from '@/integrations/supabase/models';
+import { Milestone, StepAction } from '@/integrations/supabase/models';
 
 type ApiTriggerNodeProps = {
   data: {
     label: string;
     content?: string;
     milestones?: Milestone[];
+    actions?: StepAction[];
     styling?: {
       background?: string;
       border?: string;

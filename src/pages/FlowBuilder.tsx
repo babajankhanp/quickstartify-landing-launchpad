@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   ReactFlow,
@@ -39,7 +40,19 @@ import {
   TestTube,
   Clock,
   LayoutGrid,
-  Loader2
+  Loader2,
+  ArrowRight,
+  FileInput,
+  FileCheck,
+  FormInput,
+  Notification,
+  BellRing,
+  Send,
+  User,
+  UserPlus,
+  ShieldCheck,
+  Video,
+  Timer
 } from 'lucide-react';
 import { TooltipNode } from '@/components/flow-builder/nodes/TooltipNode';
 import { ModalNode } from '@/components/flow-builder/nodes/ModalNode';
@@ -250,7 +263,7 @@ const FlowBuilder = () => {
   // Load flow data from Supabase
   useEffect(() => {
     async function fetchFlowData() {
-      if (!id || !user) {
+      if (!id || !user || id === ':id') {
         setLoading(false);
         return;
       }
@@ -317,8 +330,8 @@ const FlowBuilder = () => {
             const nodeData: NodeData = {
               label: step.title,
               content: step.content || '',
-              milestones: step.milestones || [],
-              actions: step.actions || [],
+              milestones: convertJsonToMilestones(milestonesJson),
+              actions: convertJsonToStepActions(actionsJson),
               styling: step.styling && typeof step.styling === 'object' 
                 ? {
                     background: step.styling.background || 'bg-white',
@@ -388,6 +401,30 @@ const FlowBuilder = () => {
     fetchFlowData();
   }, [id, user]);
   
+  // Convert complex objects to JSON-serializable format
+  const prepareStepStylingForSave = (node: AppNode) => {
+    // Extract connections for this node
+    const nodeConnections = edges
+      .filter(edge => edge.source === node.id)
+      .map(edge => ({
+        target: edge.target,
+        condition: edge.data?.condition
+      }));
+    
+    // Create a new styling object that is JSON serializable
+    return {
+      position_x: node.position.x,
+      position_y: node.position.y,
+      connections: nodeConnections,
+      background: node.data.styling?.background || 'bg-white',
+      border: node.data.styling?.border || 'border-purple-200',
+      textColor: node.data.styling?.textColor || 'text-foreground',
+      // Convert complex objects to JSON-serializable format
+      milestones: node.data.milestones ? JSON.parse(JSON.stringify(node.data.milestones)) : [],
+      actions: node.data.actions ? JSON.parse(JSON.stringify(node.data.actions)) : []
+    };
+  };
+  
   // Handle saving flow
   const saveFlow = async () => {
     if (!user) {
@@ -414,7 +451,7 @@ const FlowBuilder = () => {
       // Create or update the flow
       let flowId = id;
       
-      if (!flowId || flowId === 'new') {
+      if (!flowId || flowId === 'new' || flowId === ':id') {
         // Create a new flow
         const { data: newFlow, error: flowError } = await supabase
           .from('flows')
@@ -450,7 +487,7 @@ const FlowBuilder = () => {
       }
 
       // Delete existing steps for this flow (to be replaced)
-      if (flowId !== 'new') {
+      if (flowId !== 'new' && flowId !== ':id') {
         const { error: deleteError } = await supabase
           .from('flow_steps')
           .delete()
@@ -459,42 +496,30 @@ const FlowBuilder = () => {
         if (deleteError) throw deleteError;
       }
       
-      // Save all nodes as flow steps
-      const flowSteps = nodes.map((node, index) => {
-        // Extract connections for this node
-        const nodeConnections = edges
-          .filter(edge => edge.source === node.id)
-          .map(edge => ({
-            target: edge.target,
-            condition: edge.data?.condition
-          }));
-        
+      // Prepare steps for saving - convert complex objects to JSON-serializable format
+      const flowStepsToSave = nodes.map((node, index) => {
         return {
           id: node.id,
           flow_id: flowId,
           title: node.data.label || `Step ${index + 1}`,
-          content: node.data.content || null,
+          content: node.data.content || '',
           step_type: node.type,
           position: index,
-          dom_selector: node.data.dom_selector || null,
-          page_url: node.data.page_url || null,
-          styling: {
-            ...node.data.styling,
-            position_x: node.position.x,
-            position_y: node.position.y,
-            connections: nodeConnections,
-            milestones: node.data.milestones || [],
-            actions: node.data.actions || []
-          },
+          dom_selector: node.data.dom_selector || '',
+          page_url: node.data.page_url || '',
+          styling: prepareStepStylingForSave(node),
           targeting_rules: node.data.targeting_rules || {}
         };
       });
       
-      const { error: stepsError } = await supabase
-        .from('flow_steps')
-        .insert(flowSteps);
-      
-      if (stepsError) throw stepsError;
+      // Save all steps
+      if (flowStepsToSave.length > 0) {
+        const { error: stepsError } = await supabase
+          .from('flow_steps')
+          .insert(flowStepsToSave);
+        
+        if (stepsError) throw stepsError;
+      }
       
       toast({
         title: "Flow saved",
@@ -560,16 +585,17 @@ const FlowBuilder = () => {
           <h3 className="text-lg font-semibold mb-4">Flow Nodes</h3>
           
           <div className="grid gap-2">
+            {/* Updated flow node tools */}
             <div 
-              className="flow-node-item tooltip-node" 
+              className="flow-node-item notification-node" 
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'tooltip');
-                event.dataTransfer.setData('application/reactflow/label', 'Tooltip');
+                event.dataTransfer.setData('application/reactflow/label', 'Notification');
               }}
             >
-              <MessageCircle className="h-4 w-4" />
-              <span>Tooltip</span>
+              <BellRing className="h-4 w-4" />
+              <span>In-app Notification</span>
             </div>
             
             <div 
@@ -577,47 +603,71 @@ const FlowBuilder = () => {
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'modal');
-                event.dataTransfer.setData('application/reactflow/label', 'Modal');
+                event.dataTransfer.setData('application/reactflow/label', 'Onboarding Modal');
               }}
             >
               <LayoutGrid className="h-4 w-4" />
-              <span>Modal</span>
+              <span>Onboarding Modal</span>
             </div>
             
             <div 
-              className="flow-node-item hotspot-node" 
+              className="flow-node-item form-node" 
+              draggable 
+              onDragStart={(event) => {
+                event.dataTransfer.setData('application/reactflow/type', 'modal');
+                event.dataTransfer.setData('application/reactflow/label', 'Form');
+              }}
+            >
+              <FormInput className="h-4 w-4" />
+              <span>Form Collection</span>
+            </div>
+            
+            <div 
+              className="flow-node-item user-node" 
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'hotspot');
-                event.dataTransfer.setData('application/reactflow/label', 'Hotspot');
+                event.dataTransfer.setData('application/reactflow/label', 'User Action');
               }}
             >
-              <Layers className="h-4 w-4" />
-              <span>Hotspot</span>
+              <User className="h-4 w-4" />
+              <span>User Action</span>
             </div>
             
             <div 
-              className="flow-node-item checklist-node" 
+              className="flow-node-item email-node" 
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'checklist');
-                event.dataTransfer.setData('application/reactflow/label', 'Checklist');
+                event.dataTransfer.setData('application/reactflow/label', 'Email');
               }}
             >
-              <Copy className="h-4 w-4" />
-              <span>Checklist</span>
+              <Send className="h-4 w-4" />
+              <span>Email Trigger</span>
             </div>
             
             <div 
-              className="flow-node-item branch-node" 
+              className="flow-node-item onboarding-node" 
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'branch');
-                event.dataTransfer.setData('application/reactflow/label', 'Branch');
+                event.dataTransfer.setData('application/reactflow/label', 'Onboarding Step');
               }}
             >
-              <Grid className="h-4 w-4" />
-              <span>Branch</span>
+              <UserPlus className="h-4 w-4" />
+              <span>Onboarding Step</span>
+            </div>
+            
+            <div 
+              className="flow-node-item video-node" 
+              draggable 
+              onDragStart={(event) => {
+                event.dataTransfer.setData('application/reactflow/type', 'modal');
+                event.dataTransfer.setData('application/reactflow/label', 'Video Tutorial');
+              }}
+            >
+              <Video className="h-4 w-4" />
+              <span>Video Tutorial</span>
             </div>
             
             <div 
@@ -625,11 +675,11 @@ const FlowBuilder = () => {
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'delay');
-                event.dataTransfer.setData('application/reactflow/label', 'Delay');
+                event.dataTransfer.setData('application/reactflow/label', 'Time Delay');
               }}
             >
-              <Clock className="h-4 w-4" />
-              <span>Delay</span>
+              <Timer className="h-4 w-4" />
+              <span>Time Delay</span>
             </div>
             
             <div 
@@ -637,11 +687,11 @@ const FlowBuilder = () => {
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'apiTrigger');
-                event.dataTransfer.setData('application/reactflow/label', 'API Trigger');
+                event.dataTransfer.setData('application/reactflow/label', 'Integration');
               }}
             >
               <Database className="h-4 w-4" />
-              <span>API Trigger</span>
+              <span>Integration</span>
             </div>
             
             <div 
@@ -653,7 +703,19 @@ const FlowBuilder = () => {
               }}
             >
               <TestTube className="h-4 w-4" />
-              <span>A/B Switch</span>
+              <span>A/B Test</span>
+            </div>
+
+            <div 
+              className="flow-node-item condition-node" 
+              draggable 
+              onDragStart={(event) => {
+                event.dataTransfer.setData('application/reactflow/type', 'branch');
+                event.dataTransfer.setData('application/reactflow/label', 'Condition');
+              }}
+            >
+              <ArrowRight className="h-4 w-4" />
+              <span>Condition</span>
             </div>
           </div>
           
