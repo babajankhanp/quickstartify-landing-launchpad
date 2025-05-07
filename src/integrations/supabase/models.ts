@@ -1,4 +1,3 @@
-
 export interface Flow {
   id: string;
   user_id: string;
@@ -17,13 +16,13 @@ export interface FlowStep {
   title: string;
   content: string | null;
   step_type: 'tooltip' | 'modal' | 'hotspot' | 'slideout' | 'checklist';
-  dom_selector: string | null;
-  page_url: string | null;
   position: number;
-  targeting_rules: Record<string, any>;
-  styling: Record<string, any>;
   created_at: string;
   updated_at: string;
+  dom_selector?: string | null;
+  page_url?: string | null;
+  targeting_rules?: Record<string, any>;
+  styling?: Record<string, any>;
 }
 
 export interface FlowVariation {
