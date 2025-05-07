@@ -107,3 +107,49 @@ export interface FlowAnalytic {
   event_type: 'view' | 'complete' | 'skip' | 'click';
   created_at: string;
 }
+
+// Import Json type for type casting
+import { Json } from './types';
+
+// Type guards for safe type conversions
+export function isMilestone(obj: any): obj is Milestone {
+  return obj && typeof obj === 'object' && 'id' in obj && 'title' in obj;
+}
+
+export function isStepAction(obj: any): obj is StepAction {
+  return obj && typeof obj === 'object' && 'id' in obj && 'type' in obj && 'name' in obj;
+}
+
+// Helper functions to convert Json types to our model types
+export function convertJsonToMilestones(json: Json | null): Milestone[] {
+  if (!json || !Array.isArray(json)) return [];
+  return json.map(item => {
+    const milestone = item as Record<string, any>;
+    return {
+      id: milestone.id || `milestone-${Date.now()}`,
+      title: milestone.title || 'Untitled',
+      subtitle: milestone.subtitle,
+      content: milestone.content,
+      formFields: milestone.formFields as FormField[],
+      isCompleted: milestone.isCompleted
+    };
+  });
+}
+
+export function convertJsonToStepActions(json: Json | null): StepAction[] {
+  if (!json || !Array.isArray(json)) return [];
+  return json.map(item => {
+    const action = item as Record<string, any>;
+    return {
+      id: action.id || `action-${Date.now()}`,
+      type: action.type || 'custom',
+      name: action.name || 'Unnamed Action',
+      endpoint: action.endpoint,
+      method: action.method,
+      headers: action.headers,
+      payload: action.payload,
+      trigger: action.trigger,
+      button_id: action.button_id
+    };
+  });
+}

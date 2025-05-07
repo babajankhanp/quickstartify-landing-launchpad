@@ -1,8 +1,23 @@
 
 import { Handle, Position } from '@xyflow/react';
 import { Database } from 'lucide-react';
+import { Milestone } from '@/integrations/supabase/models';
 
-export function ApiTriggerNode({ data, isConnectable }) {
+type ApiTriggerNodeProps = {
+  data: {
+    label: string;
+    content?: string;
+    milestones?: Milestone[];
+    styling?: {
+      background?: string;
+      border?: string;
+      textColor?: string;
+    };
+  };
+  isConnectable: boolean;
+}
+
+export function ApiTriggerNode({ data, isConnectable }: ApiTriggerNodeProps) {
   const milestones = data.milestones || [];
   const milestonesCount = milestones.length;
   const nodeBackground = data.styling?.background || 'bg-white dark:bg-gray-800';

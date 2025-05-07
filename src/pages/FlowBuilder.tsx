@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   ReactFlow,
@@ -55,7 +54,44 @@ import { FlowBuilderToolbar } from '@/components/flow-builder/FlowBuilderToolbar
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from "@/integrations/supabase/client";
-import { Flow, FlowStep, Milestone, StepAction } from '@/integrations/supabase/models';
+import { 
+  Flow, 
+  FlowStep, 
+  Milestone, 
+  StepAction, 
+  convertJsonToMilestones, 
+  convertJsonToStepActions 
+} from '@/integrations/supabase/models';
+import { Json } from '@/integrations/supabase/types';
+
+// Type for node data to ensure consistency
+interface NodeData {
+  label: string;
+  content?: string;
+  milestones?: Milestone[];
+  actions?: StepAction[];
+  styling?: {
+    background?: string;
+    border?: string;
+    textColor?: string;
+    [key: string]: any;
+  };
+  dom_selector?: string;
+  page_url?: string;
+  targeting_rules?: Record<string, any>;
+  [key: string]: any;
+}
+
+// Type for application nodes
+interface AppNode {
+  id: string;
+  type: string;
+  position: {
+    x: number;
+    y: number;
+  };
+  data: NodeData;
+}
 
 // Define custom node types
 const nodeTypes = {
@@ -70,7 +106,7 @@ const nodeTypes = {
 };
 
 // Default flow initial nodes for new flows
-const initialNodes = [
+const initialNodes: AppNode[] = [
   {
     id: 'start',
     type: 'modal',
@@ -128,22 +164,22 @@ const FlowBuilder = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [selectedNode, setSelectedNode] = useState(null);
+  const [selectedNode, setSelectedNode] = useState<AppNode | null>(null);
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
   const [flowName, setFlowName] = useState("My Onboarding Flow");
   const [flowDescription, setFlowDescription] = useState("");
   const [isDragging, setIsDragging] = useState(false);
-  const reactFlowWrapper = useRef(null);
-  const [reactFlowInstance, setReactFlowInstance] = useState(null);
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [flow, setFlow] = useState<Flow | null>(null);
   const [flowSteps, setFlowSteps] = useState<FlowStep[]>([]);
   
   // Handle node selection
-  const onNodeClick = useCallback((_, node) => {
+  const onNodeClick = useCallback((_, node: AppNode) => {
     setSelectedNode(node);
     setIsEditorModalOpen(true);
   }, []);
@@ -194,6 +230,7 @@ const FlowBuilder = () => {
           label, 
           content: `New ${label} content`,
           milestones: [],
+          actions: [],
           styling: {
             background: 'bg-white',
             border: 'border-purple-200',
@@ -201,7 +238,6 @@ const FlowBuilder = () => {
           },
           dom_selector: '',
           page_url: '',
-          actions: [],
           targeting_rules: {}
         },
       };
@@ -231,9 +267,10 @@ const FlowBuilder = () => {
         
         if (flowError) throw flowError;
         
-        setFlow(flowData);
-        setFlowName(flowData.title);
-        setFlowDescription(flowData.description || "");
+        const typedFlow = flowData as unknown as Flow;
+        setFlow(typedFlow);
+        setFlowName(typedFlow.title);
+        setFlowDescription(typedFlow.description || "");
         
         // Fetch flow steps
         const { data: stepsData, error: stepsError } = await supabase
@@ -246,15 +283,20 @@ const FlowBuilder = () => {
         
         // Set flow steps converting from DB model to app model
         const appFlowSteps = stepsData?.map(step => {
+          // Safe casting of JSON fields to typed objects
+          const milestonesJson = step.styling && typeof step.styling === 'object' && 'milestones' in step.styling 
+            ? step.styling.milestones as Json 
+            : null;
+            
+          const actionsJson = step.styling && typeof step.styling === 'object' && 'actions' in step.styling 
+            ? step.styling.actions as Json 
+            : null;
+            
           return {
             ...step,
             step_type: step.step_type as FlowStep['step_type'], // Cast to specific type
-            milestones: (step.styling && typeof step.styling === 'object' && 'milestones' in step.styling) 
-              ? step.styling.milestones as Milestone[]
-              : [],
-            actions: (step.styling && typeof step.styling === 'object' && 'actions' in step.styling) 
-              ? step.styling.actions as StepAction[]
-              : []
+            milestones: convertJsonToMilestones(milestonesJson),
+            actions: convertJsonToStepActions(actionsJson)
           } as FlowStep;
         }) || [];
         
@@ -262,7 +304,7 @@ const FlowBuilder = () => {
         
         if (appFlowSteps && appFlowSteps.length > 0) {
           // Convert flow steps to nodes and edges
-          const flowNodes = appFlowSteps.map(step => {
+          const flowNodes: AppNode[] = appFlowSteps.map(step => {
             const posX = step.styling && typeof step.styling === 'object' && 'position_x' in step.styling 
               ? Number(step.styling.position_x)
               : 0;
@@ -270,6 +312,28 @@ const FlowBuilder = () => {
             const posY = step.styling && typeof step.styling === 'object' && 'position_y' in step.styling 
               ? Number(step.styling.position_y)
               : 0;
+            
+            // Ensure we create properly typed NodeData object
+            const nodeData: NodeData = {
+              label: step.title,
+              content: step.content || '',
+              milestones: step.milestones || [],
+              actions: step.actions || [],
+              styling: step.styling && typeof step.styling === 'object' 
+                ? {
+                    background: step.styling.background || 'bg-white',
+                    border: step.styling.border || 'border-purple-200',
+                    textColor: step.styling.textColor || 'text-foreground'
+                  }
+                : {
+                    background: 'bg-white',
+                    border: 'border-purple-200',
+                    textColor: 'text-foreground'
+                  },
+              dom_selector: step.dom_selector || '',
+              page_url: step.page_url || '',
+              targeting_rules: step.targeting_rules || {}
+            };
               
             return {
               id: step.id,
@@ -278,26 +342,7 @@ const FlowBuilder = () => {
                 x: posX,
                 y: posY,
               },
-              data: { 
-                label: step.title,
-                content: step.content,
-                milestones: step.milestones || [],
-                actions: step.actions || [],
-                styling: step.styling && typeof step.styling === 'object' 
-                  ? {
-                      background: step.styling.background || 'bg-white',
-                      border: step.styling.border || 'border-purple-200',
-                      textColor: step.styling.textColor || 'text-foreground'
-                    }
-                  : {
-                      background: 'bg-white',
-                      border: 'border-purple-200',
-                      textColor: 'text-foreground'
-                    },
-                dom_selector: step.dom_selector || '',
-                page_url: step.page_url || '',
-                targeting_rules: step.targeting_rules || {}
-              }
+              data: nodeData
             };
           });
 

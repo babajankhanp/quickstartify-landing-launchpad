@@ -1,4 +1,3 @@
-
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -8,36 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Flow, FlowStep, Milestone, FormField } from "@/integrations/supabase/models";
+import { Flow, FlowStep, Milestone, FormField, BrandingConfig, convertJsonToMilestones } from "@/integrations/supabase/models";
 import { RichTextPreview } from "@/components/ui/rich-text-editor";
+import { Json } from "@/integrations/supabase/types";
 
 // Define our extended flow step type to add milestones
 interface ExtendedFlowStep extends Omit<FlowStep, 'step_type'> {
   step_type: string;
   milestones?: Milestone[];
-}
-
-// Define branding config interface for our preview
-interface BrandingConfig {
-  logo_url?: string;
-  primary_color?: string;
-  secondary_color?: string;
-  background_style?: 'color' | 'gradient' | 'image';
-  background_color?: string;
-  background_gradient?: string;
-  background_image_url?: string;
-  animation_style?: 'fade' | 'slide' | 'zoom' | 'flip' | 'bounce';
-  card_style?: 'rounded' | 'sharp' | 'floating' | 'bordered';
-  font_family?: string;
-  footer_links?: FooterLink[];
-  privacy_policy_url?: string;
-  terms_url?: string;
-  custom_css?: string;
-}
-
-interface FooterLink {
-  text: string;
-  url: string;
 }
 
 export default function FlowPreview() {
@@ -65,10 +42,13 @@ export default function FlowPreview() {
           .single();
         
         if (flowError) throw flowError;
-        setFlow(flowData);
+        
+        // Cast the database response to our Flow type
+        const typedFlow = flowData as unknown as Flow;
+        setFlow(typedFlow);
         
         // Get branding config from database or flow data
-        const brandingConfigData = flowData.branding_config || {
+        const brandingConfigData = typedFlow.branding_config || {
           logo_url: '/placeholder.svg',
           primary_color: '#9b87f5',
           secondary_color: '#7e69ab',
@@ -95,11 +75,16 @@ export default function FlowPreview() {
         
         // Process step data to extract milestones from styling
         const processedSteps = stepsData?.map(step => {
-          const styling = typeof step.styling === 'object' ? step.styling : {};
+          const styling = step.styling as Record<string, any> || {};
+          
+          // Safely convert JSON milestones to typed Milestone objects
+          const milestones = styling && styling.milestones 
+            ? convertJsonToMilestones(styling.milestones as Json)
+            : [];
           
           return {
             ...step,
-            milestones: styling && 'milestones' in styling ? styling.milestones : []
+            milestones
           } as ExtendedFlowStep;
         }) || [];
         
