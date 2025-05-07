@@ -16,6 +16,7 @@ import {
   Film, 
   Download
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
@@ -27,6 +28,10 @@ import { RichTextPreview } from "@/components/ui/rich-text-editor";
 
 // Extended FlowStep interface to include data property
 interface ExtendedFlowStep extends FlowStep {
+  dom_selector?: string;
+  page_url?: string;
+  targeting_rules?: any;
+  styling?: any;
   data?: {
     label?: string;
     content?: string;
@@ -151,28 +156,18 @@ const FlowPreview = () => {
                   ]
                 },
                 {
-                  title: 'Preferences',
-                  subtitle: 'Customize your experience',
+                  title: 'Mobile Number',
+                  subtitle: 'What\'s your mobile number?',
                   formFields: [
                     {
-                      name: 'Theme',
-                      type: 'select',
-                      placeholder: 'Select theme'
-                    },
-                    {
-                      name: 'Notifications',
-                      type: 'checkbox',
-                      placeholder: 'Enable notifications'
+                      name: 'PhoneNumber',
+                      type: 'tel',
+                      placeholder: '+60'
                     },
                     {
                       isButton: true,
-                      buttonLabel: 'Complete Setup',
+                      buttonLabel: 'Send OTP',
                       buttonAction: 'next'
-                    },
-                    {
-                      isButton: true,
-                      buttonLabel: 'Skip',
-                      buttonAction: 'skip'
                     }
                   ]
                 }
@@ -334,134 +329,130 @@ const FlowPreview = () => {
     
     switch (step.step_type) {
       case 'modal':
+        // Render inside a card instead of a modal
         return (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className={`${modalBackground} p-6 rounded-lg shadow-lg max-w-md w-full ${borderColor} border`}>
-              <h3 className={`text-lg font-semibold mb-2 ${textColor}`}>
-                {currentMilestone ? currentMilestone.title : (step.title || nodeData.label)}
-              </h3>
+          <div className="flex items-center justify-center h-full w-full">
+            <Card className="w-full max-w-lg mx-auto bg-white shadow-md dark:bg-gray-800">
+              {/* Logo/company branding at the top */}
+              <div className="p-6 pb-0">
+                <div className="text-2xl font-bold text-blue-800 mb-2">curlec</div>
+                <div className="text-sm text-gray-500">by Razorpay</div>
+              </div>
               
-              {currentMilestone ? (
-                // Render milestone content
-                <div className="space-y-4">
-                  {currentMilestone.subtitle && (
-                    <p className={`text-sm ${textColor} opacity-80`}>{currentMilestone.subtitle}</p>
-                  )}
-                  
-                  {/* Render form fields and buttons in the order they appear */}
-                  <div className="space-y-4">
-                    {currentMilestone.formFields?.map((field, idx) => (
-                      <div key={idx} className="space-y-1">
-                        {field.isButton ? (
-                          // Render button
-                          <Button 
-                            onClick={() => {
-                              if (field.buttonAction === 'next') handleMilestoneNext();
-                              else if (field.buttonAction === 'previous') handleMilestonePrev();
-                              else if (field.buttonAction === 'skip') handleSkipStep();
-                              else toast({ 
-                                title: `Button clicked: ${field.buttonLabel}`, 
-                                description: `Action: ${field.buttonAction}` 
-                              });
-                            }}
-                            variant={field.buttonAction === 'skip' ? "outline" : "default"}
-                            className={field.buttonAction !== 'skip' ? buttonColor : ""}
-                          >
-                            {field.buttonLabel || 'Continue'}
-                          </Button>
-                        ) : (
-                          // Render input field
-                          <>
-                            {field.name && <label className={`text-sm font-medium ${textColor}`}>{field.name}</label>}
-                            {field.type === 'richtext' ? (
-                              field.richTextContent ? (
-                                <RichTextPreview content={field.richTextContent} />
-                              ) : (
-                                <div className="border rounded p-2 text-sm text-muted-foreground">Rich text content would be shown here</div>
-                              )
-                            ) : field.type === 'textarea' ? (
-                              <textarea 
-                                placeholder={field.placeholder} 
-                                className="w-full p-2 border rounded-md resize-none" 
-                                rows={3}
-                              />
-                            ) : field.type === 'checkbox' ? (
-                              <div className="flex items-center">
-                                <input type="checkbox" id={`field-${idx}`} className="mr-2" />
-                                <label htmlFor={`field-${idx}`}>{field.placeholder}</label>
-                              </div>
-                            ) : field.type === 'select' ? (
-                              <select className="w-full p-2 border rounded-md">
-                                <option value="">Select an option</option>
-                                <option value="option1">Option 1</option>
-                                <option value="option2">Option 2</option>
-                              </select>
+              <CardContent className="p-6 pt-10">
+                {currentMilestone ? (
+                  // Render milestone content
+                  <div className="space-y-6">
+                    <h3 className={`text-xl font-medium mb-4 ${textColor}`}>
+                      {currentMilestone.subtitle}
+                    </h3>
+                    
+                    {/* Render form fields and buttons in the order they appear */}
+                    <div className="space-y-6">
+                      {currentMilestone.formFields?.map((field, idx) => (
+                        <div key={idx} className="space-y-2">
+                          {!field.isButton && field.name && (
+                            <label className={`text-sm font-medium ${textColor}`}>{field.name}</label>
+                          )}
+                          
+                          {field.type === 'richtext' ? (
+                            field.richTextContent ? (
+                              <RichTextPreview content={field.richTextContent} />
                             ) : (
-                              <input 
-                                type={field.type || 'text'} 
-                                placeholder={field.placeholder} 
-                                className="w-full p-2 border rounded-md" 
-                              />
-                            )}
-                          </>
-                        )}
-                      </div>
-                    ))}
+                              <div className="border rounded p-2 text-sm text-muted-foreground">Rich text content would be shown here</div>
+                            )
+                          ) : field.type === 'textarea' ? (
+                            <textarea 
+                              placeholder={field.placeholder} 
+                              className="w-full p-2 border rounded-md resize-none" 
+                              rows={3}
+                            />
+                          ) : field.type === 'checkbox' ? (
+                            <div className="flex items-center">
+                              <input type="checkbox" id={`field-${idx}`} className="mr-2" />
+                              <label htmlFor={`field-${idx}`}>{field.placeholder}</label>
+                            </div>
+                          ) : field.type === 'select' ? (
+                            <select className="w-full p-2 border rounded-md">
+                              <option value="">Select an option</option>
+                              <option value="option1">Option 1</option>
+                              <option value="option2">Option 2</option>
+                            </select>
+                          ) : field.isButton ? (
+                            // Render button - Full width button at bottom
+                            <Button 
+                              onClick={() => {
+                                if (field.buttonAction === 'next') handleMilestoneNext();
+                                else if (field.buttonAction === 'previous') handleMilestonePrev();
+                                else if (field.buttonAction === 'skip') handleSkipStep();
+                                else toast({ 
+                                  title: `Button clicked: ${field.buttonLabel}`, 
+                                  description: `Action: ${field.buttonAction}` 
+                                });
+                              }}
+                              variant={field.buttonAction === 'skip' ? "outline" : "default"}
+                              className={`w-full mt-4 ${field.buttonAction !== 'skip' ? buttonColor : "bg-gray-100 hover:bg-gray-200 text-gray-500"}`}
+                            >
+                              {field.buttonLabel || 'Continue'}
+                            </Button>
+                          ) : (
+                            <Input
+                              type={field.type || 'text'} 
+                              placeholder={field.placeholder} 
+                              className="w-full" 
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  
-                  {/* Show milestone navigation if no buttons in milestone */}
-                  {(!currentMilestone.formFields || !currentMilestone.formFields.some(field => field.isButton)) && (
-                    <div className="flex justify-end space-x-2 pt-2">
-                      <Button variant="outline" onClick={handleMilestonePrev} disabled={activeMilestone === 0 && currentStep === 0}>
-                        Back
-                      </Button>
+                ) : (
+                  // Render regular content if no milestone
+                  <>
+                    <div className="mb-4">
+                      {nodeData.content ? (
+                        typeof nodeData.content === 'string' && nodeData.content.startsWith('<') ? (
+                          <RichTextPreview content={nodeData.content} />
+                        ) : (
+                          <p className={textColor}>{nodeData.content}</p>
+                        )
+                      ) : (
+                        <p className={textColor}>{step.content}</p>
+                      )}
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={handleSkipStep}>Skip</Button>
                       <Button 
-                        onClick={handleMilestoneNext} 
+                        onClick={handleNextStep}
                         className={buttonColor}
                       >
-                        {activeMilestone === milestones.length - 1 && currentStep === steps.length - 1 ? "Finish" : "Next"}
+                        Continue
                       </Button>
                     </div>
-                  )}
-                </div>
-              ) : (
-                // Render regular content if no milestone
-                <>
-                  <div className="mb-4">
-                    {nodeData.content ? (
-                      typeof nodeData.content === 'string' && nodeData.content.startsWith('<') ? (
-                        <RichTextPreview content={nodeData.content} />
-                      ) : (
-                        <p className={textColor}>{nodeData.content}</p>
-                      )
-                    ) : (
-                      <p className={textColor}>{step.content}</p>
-                    )}
+                  </>
+                )}
+                
+                {/* Milestone indicators */}
+                {milestones.length > 1 && (
+                  <div className="flex justify-center mt-8 space-x-2">
+                    {milestones.map((_, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`w-2 h-2 rounded-full ${idx === activeMilestone ? 'bg-quickstartify-purple' : 'bg-gray-300 dark:bg-gray-600'}`}
+                      />
+                    ))}
                   </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={handleSkipStep}>Skip</Button>
-                    <Button 
-                      onClick={handleNextStep}
-                      className={buttonColor}
-                    >
-                      Continue
-                    </Button>
-                  </div>
-                </>
-              )}
+                )}
+              </CardContent>
               
-              {/* Milestone indicators */}
-              {milestones.length > 1 && (
-                <div className="flex justify-center mt-4 space-x-1">
-                  {milestones.map((_, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`w-2 h-2 rounded-full ${idx === activeMilestone ? 'bg-quickstartify-purple' : 'bg-gray-300 dark:bg-gray-600'}`}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+              {/* Footer with copyright and links */}
+              <div className="p-4 text-center text-xs text-gray-500 border-t">
+                © 2017-2025 · <a href="#" className="hover:underline">Merchant agreement</a> · 
+                <a href="#" className="hover:underline ml-1">Terms of use</a> · 
+                <a href="#" className="hover:underline ml-1">Privacy policy</a> · 
+                <a href="#" className="hover:underline ml-1">Support</a>
+              </div>
+            </Card>
           </div>
         );
         
@@ -501,7 +492,7 @@ const FlowPreview = () => {
                 </div>
               ))}
             </div>
-            <Button className="w-full mt-4" onClick={handleNextStep} className={buttonColor}>Continue</Button>
+            <Button className="w-full mt-4" onClick={handleNextStep}>Continue</Button>
           </div>
         );
         
@@ -591,49 +582,10 @@ const FlowPreview = () => {
             </div>
             <CardContent className="p-2 flex justify-center bg-gray-100 dark:bg-gray-900 min-h-[60vh]">
               <div className={`bg-white dark:bg-gray-800 overflow-hidden border rounded-md shadow ${getDeviceFrameClass()}`}>
-                {/* Empty Content Frame - Just for preview */}
-                <div className="w-full h-full flex flex-col p-0 relative">
-                  <div className="bg-blue-500 dark:bg-blue-800 h-14 flex items-center px-4 text-white">
-                    <h2 className="text-lg font-medium">Application Navigation</h2>
-                  </div>
-                  <div className="flex flex-1">
-                    <div className="w-48 bg-gray-100 dark:bg-gray-900 p-4 hidden sm:block">
-                      <div className="space-y-2">
-                        <div className="p-2 rounded bg-blue-100 dark:bg-gray-800">Dashboard</div>
-                        <div className="p-2 rounded">Settings</div>
-                        <div className="p-2 rounded">Users</div>
-                        <div className="p-2 rounded">Analytics</div>
-                      </div>
-                    </div>
-                    <div className="flex-1 p-4 relative">
-                      {/* Dashboard-like UI */}
-                      <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                          <div key={i} className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-700">
-                            <div className="font-medium">Metric {i+1}</div>
-                            <div className="text-2xl font-bold mt-1">
-                              {[81, 23, 664][i]}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="border rounded-lg p-4">
-                        <div className="font-medium mb-2">Recent Activity</div>
-                        <div className="space-y-2">
-                          {Array.from({ length: 4 }).map((_, i) => (
-                            <div key={i} className="p-2 border-b last:border-0 flex justify-between">
-                              <span>Activity {i+1}</span>
-                              <span className="text-muted-foreground text-sm">Today</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      {/* Render current flow step */}
-                      {renderCurrentStep()}
-                    </div>
-                  </div>
+                {/* Content Frame with pattern background - Similar to reference image */}
+                <div className="w-full h-full flex flex-col p-0 relative bg-dot-pattern">
+                  {/* Render current flow step */}
+                  {renderCurrentStep()}
                 </div>
               </div>
             </CardContent>
