@@ -1,4 +1,3 @@
-
 // This file contains type definitions for our database models
 import { Json } from "./types";
 
@@ -88,6 +87,24 @@ export interface BrandingConfig {
   privacy_policy_url?: string;
   terms_url?: string;
   footer_links?: { text: string; url: string }[];
+}
+
+export interface StepAction {
+  id: string;
+  type: string;
+  config: Record<string, any>;
+}
+
+export function convertJsonToStepActions(json: Json): StepAction[] {
+  if (!json || !Array.isArray(json)) {
+    return [];
+  }
+
+  return json.map((item: any) => ({
+    id: item.id || '',
+    type: item.type || '',
+    config: item.config || {}
+  }));
 }
 
 // Helper function to convert JSON to typed objects
