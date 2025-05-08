@@ -1,12 +1,22 @@
 
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, ChevronLeft, ChevronRight, Check, AlertCircle } from "lucide-react";
+import { 
+  Loader2, 
+  ChevronLeft, 
+  ChevronRight, 
+  Check, 
+  AlertCircle,
+  ArrowLeft,
+  Monitor,
+  Smartphone,
+  Tablet
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Flow, 
@@ -27,8 +37,12 @@ interface ExtendedFlowStep extends Omit<FlowStep, 'step_type'> {
   milestones?: Milestone[];
 }
 
+// Define device preview types
+type DeviceType = 'mobile' | 'tablet' | 'desktop';
+
 export default function FlowPreview() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [flow, setFlow] = useState<Flow | null>(null);
   const [steps, setSteps] = useState<ExtendedFlowStep[]>([]);
@@ -37,6 +51,7 @@ export default function FlowPreview() {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [brandingConfig, setBrandingConfig] = useState<BrandingConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deviceType, setDeviceType] = useState<DeviceType>('desktop');
 
   useEffect(() => {
     async function fetchFlowData() {
@@ -547,6 +562,19 @@ export default function FlowPreview() {
     };
   };
 
+  // Get device preview container width based on selected device
+  const getDeviceContainerStyles = () => {
+    switch (deviceType) {
+      case 'mobile':
+        return 'max-w-[375px]';
+      case 'tablet':
+        return 'max-w-[768px]';
+      case 'desktop':
+      default:
+        return 'max-w-full';
+    }
+  };
+
   // Apply custom CSS if provided
   useEffect(() => {
     if (brandingConfig?.custom_css) {
@@ -606,115 +634,187 @@ export default function FlowPreview() {
   const isBackgroundObject = typeof backgroundStyle === 'object';
   
   return (
-    <div 
-      className={`min-h-screen flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 ${isBackgroundObject ? '' : backgroundStyle}`}
-      style={{
-        ...(isBackgroundObject ? backgroundStyle : {}),
-        ...(brandingConfig?.background_image_url && brandingConfig?.background_style === 'image' 
-          ? { backgroundImage: `url(${brandingConfig.background_image_url})` } 
-          : {}),
-        ...getFontFamilyStyle()
-      }}
-    >
-      {/* Optional logo */}
-      {brandingConfig?.logo_url && (
-        <div className="mb-8 flex justify-center">
-          <img 
-            src={brandingConfig.logo_url} 
-            alt="Logo" 
-            className="h-12 max-w-xs"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = '/placeholder.svg';
-              target.alt = 'Failed to load logo';
-            }}
-          />
+    <div className="flex flex-col h-screen">
+      {/* Top navigation bar with device controls */}
+      <div className="bg-white dark:bg-gray-900 border-b py-2 px-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="font-medium">{flow?.name || 'Flow Preview'}</h1>
         </div>
-      )}
-      
-      <Card className={`w-full max-w-md mx-auto ${getCardClass()} ${getAnimationStyle()}`}>
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">
-            {milestone?.title || currentStep.title}
-          </CardTitle>
-          {milestone?.subtitle && (
-            <p className="text-center text-muted-foreground">{milestone.subtitle}</p>
-          )}
-        </CardHeader>
         
-        {/* Milestone indicator */}
-        {currentStep.milestones && currentStep.milestones.length > 1 && (
-          <div className="px-6">
-            <div className="flex gap-1 justify-center">
-              {currentStep.milestones.map((m, idx) => (
-                <div 
-                  key={m.id} 
-                  className={`h-1.5 rounded-full flex-grow max-w-8 ${
-                    idx === currentMilestoneIndex 
-                      ? brandingConfig?.primary_color 
-                        ? `bg-[${brandingConfig.primary_color}]` 
-                        : 'bg-quickstartify-purple' 
-                      : idx < currentMilestoneIndex 
-                        ? brandingConfig?.primary_color 
-                          ? `bg-[${brandingConfig.primary_color}]/50` 
-                          : 'bg-quickstartify-purple/50' 
-                        : 'bg-gray-200'
-                  }`}
-                  style={{
-                    backgroundColor: idx === currentMilestoneIndex 
-                      ? brandingConfig?.primary_color || ''
-                      : idx < currentMilestoneIndex 
-                        ? `${brandingConfig?.primary_color}80` || ''
-                        : ''
+        <div className="flex items-center gap-2">
+          <Button
+            variant={deviceType === 'mobile' ? 'default' : 'outline'} 
+            size="sm"
+            onClick={() => setDeviceType('mobile')}
+            className="px-2"
+          >
+            <Smartphone className="h-4 w-4" />
+            <span className="ml-1 hidden sm:inline">Mobile</span>
+          </Button>
+          <Button
+            variant={deviceType === 'tablet' ? 'default' : 'outline'} 
+            size="sm"
+            onClick={() => setDeviceType('tablet')}
+            className="px-2"
+          >
+            <Tablet className="h-4 w-4" />
+            <span className="ml-1 hidden sm:inline">Tablet</span>
+          </Button>
+          <Button 
+            variant={deviceType === 'desktop' ? 'default' : 'outline'} 
+            size="sm"
+            onClick={() => setDeviceType('desktop')}
+            className="px-2"
+          >
+            <Monitor className="h-4 w-4" />
+            <span className="ml-1 hidden sm:inline">Desktop</span>
+          </Button>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {id && (
+            <>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate(`/flow/${id}/branding`)}
+              >
+                Branding
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate(`/builder/${id}`)}
+              >
+                Builder
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+      
+      {/* Preview content with device frame */}
+      <div className="flex-1 bg-gray-100 dark:bg-gray-800 overflow-auto p-4 flex justify-center">
+        <div className={`transition-all duration-300 ${getDeviceContainerStyles()}`}>
+          <div 
+            className={`min-h-[calc(100vh-9rem)] flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 ${isBackgroundObject ? '' : backgroundStyle}`}
+            style={{
+              ...(isBackgroundObject ? backgroundStyle : {}),
+              ...(brandingConfig?.background_image_url && brandingConfig?.background_style === 'image' 
+                ? { backgroundImage: `url(${brandingConfig.background_image_url})` } 
+                : {}),
+              ...getFontFamilyStyle()
+            }}
+          >
+            {/* Optional logo */}
+            {brandingConfig?.logo_url && (
+              <div className="mb-8 flex justify-center">
+                <img 
+                  src={brandingConfig.logo_url} 
+                  alt="Logo" 
+                  className="h-12 max-w-xs"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '/placeholder.svg';
+                    target.alt = 'Failed to load logo';
                   }}
                 />
-              ))}
-            </div>
+              </div>
+            )}
+            
+            <Card className={`w-full max-w-md mx-auto ${getCardClass()} ${getAnimationStyle()}`}>
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold text-center">
+                  {milestone?.title || currentStep.title}
+                </CardTitle>
+                {milestone?.subtitle && (
+                  <p className="text-center text-muted-foreground">{milestone.subtitle}</p>
+                )}
+              </CardHeader>
+              
+              {/* Milestone indicator */}
+              {currentStep.milestones && currentStep.milestones.length > 1 && (
+                <div className="px-6">
+                  <div className="flex gap-1 justify-center">
+                    {currentStep.milestones.map((m, idx) => (
+                      <div 
+                        key={m.id} 
+                        className={`h-1.5 rounded-full flex-grow max-w-8 ${
+                          idx === currentMilestoneIndex 
+                            ? brandingConfig?.primary_color 
+                              ? `bg-[${brandingConfig.primary_color}]` 
+                              : 'bg-quickstartify-purple' 
+                            : idx < currentMilestoneIndex 
+                              ? brandingConfig?.primary_color 
+                                ? `bg-[${brandingConfig.primary_color}]/50` 
+                                : 'bg-quickstartify-purple/50' 
+                              : 'bg-gray-200'
+                        }`}
+                        style={{
+                          backgroundColor: idx === currentMilestoneIndex 
+                            ? brandingConfig?.primary_color || ''
+                            : idx < currentMilestoneIndex 
+                              ? `${brandingConfig?.primary_color}80` || ''
+                              : ''
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <CardContent className="pt-4">
+                {/* Milestone content */}
+                {milestone?.content && (
+                  <div className="mb-4">
+                    <RichTextPreview content={milestone.content} />
+                  </div>
+                )}
+                
+                {/* Form fields */}
+                {renderFormFields()}
+              </CardContent>
+              
+              {/* Footer with branding */}
+              {((brandingConfig?.footer_links && brandingConfig.footer_links.length > 0) || 
+                brandingConfig?.privacy_policy_url || 
+                brandingConfig?.terms_url) && (
+                <CardFooter className="flex justify-between border-t pt-4 text-xs text-muted-foreground">
+                  <div>
+                    {brandingConfig?.footer_links?.map((link, idx) => (
+                      <span key={idx}>
+                        {idx > 0 && ' • '}
+                        <a href={link.url} className="hover:underline" target="_blank" rel="noopener noreferrer">
+                          {link.text}
+                        </a>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-3">
+                    {brandingConfig?.privacy_policy_url && (
+                      <a href={brandingConfig.privacy_policy_url} className="hover:underline" target="_blank" rel="noopener noreferrer">
+                        Privacy Policy
+                      </a>
+                    )}
+                    {brandingConfig?.terms_url && (
+                      <a href={brandingConfig.terms_url} className="hover:underline" target="_blank" rel="noopener noreferrer">
+                        Terms
+                      </a>
+                    )}
+                  </div>
+                </CardFooter>
+              )}
+            </Card>
           </div>
-        )}
-        
-        <CardContent className="pt-4">
-          {/* Milestone content */}
-          {milestone?.content && (
-            <div className="mb-4">
-              <RichTextPreview content={milestone.content} />
-            </div>
-          )}
-          
-          {/* Form fields */}
-          {renderFormFields()}
-        </CardContent>
-        
-        {/* Footer with branding */}
-        {((brandingConfig?.footer_links && brandingConfig.footer_links.length > 0) || 
-          brandingConfig?.privacy_policy_url || 
-          brandingConfig?.terms_url) && (
-          <CardFooter className="flex justify-between border-t pt-4 text-xs text-muted-foreground">
-            <div>
-              {brandingConfig?.footer_links?.map((link, idx) => (
-                <span key={idx}>
-                  {idx > 0 && ' • '}
-                  <a href={link.url} className="hover:underline" target="_blank" rel="noopener noreferrer">
-                    {link.text}
-                  </a>
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-3">
-              {brandingConfig?.privacy_policy_url && (
-                <a href={brandingConfig.privacy_policy_url} className="hover:underline" target="_blank" rel="noopener noreferrer">
-                  Privacy Policy
-                </a>
-              )}
-              {brandingConfig?.terms_url && (
-                <a href={brandingConfig.terms_url} className="hover:underline" target="_blank" rel="noopener noreferrer">
-                  Terms
-                </a>
-              )}
-            </div>
-          </CardFooter>
-        )}
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
