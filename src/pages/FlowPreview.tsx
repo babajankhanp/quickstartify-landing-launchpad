@@ -1,3 +1,4 @@
+
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export default function FlowPreview() {
   const [currentMilestoneIndex, setCurrentMilestoneIndex] = useState(0);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [brandingConfig, setBrandingConfig] = useState<BrandingConfig | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchFlowData() {
@@ -33,6 +35,9 @@ export default function FlowPreview() {
       
       try {
         setLoading(true);
+        setError(null);
+        
+        console.log("Fetching flow with ID:", id);
         
         // Fetch flow data
         const { data: flowData, error: flowError } = await supabase
@@ -41,7 +46,19 @@ export default function FlowPreview() {
           .eq('id', id)
           .single();
         
-        if (flowError) throw flowError;
+        if (flowError) {
+          console.error("Error fetching flow:", flowError);
+          throw flowError;
+        }
+        
+        if (!flowData) {
+          console.error("No flow data found for ID:", id);
+          setError("Flow not found");
+          setLoading(false);
+          return;
+        }
+        
+        console.log("Flow data fetched:", flowData);
         
         // Cast the database response to our Flow type
         const typedFlow = flowData as unknown as Flow;
@@ -65,16 +82,29 @@ export default function FlowPreview() {
         setBrandingConfig(brandingConfigData);
         
         // Fetch flow steps
+        console.log("Fetching flow steps for flow ID:", id);
         const { data: stepsData, error: stepsError } = await supabase
           .from('flow_steps')
           .select('*')
           .eq('flow_id', id)
           .order('position', { ascending: true });
         
-        if (stepsError) throw stepsError;
+        if (stepsError) {
+          console.error("Error fetching flow steps:", stepsError);
+          throw stepsError;
+        }
+        
+        console.log("Flow steps fetched:", stepsData);
+        
+        if (!stepsData || stepsData.length === 0) {
+          console.warn("No steps found for flow ID:", id);
+          setError("No steps found for this flow");
+          setLoading(false);
+          return;
+        }
         
         // Process step data to extract milestones from styling
-        const processedSteps = stepsData?.map(step => {
+        const processedSteps = stepsData.map(step => {
           const styling = step.styling as Record<string, any> || {};
           
           // Safely convert JSON milestones to typed Milestone objects
@@ -84,18 +114,22 @@ export default function FlowPreview() {
           
           return {
             ...step,
-            milestones
+            milestones: milestones
           } as ExtendedFlowStep;
-        }) || [];
+        });
+        
+        console.log("Processed steps with milestones:", processedSteps);
         
         setSteps(processedSteps);
         
         // Set current step to the first one
         if (processedSteps && processedSteps.length > 0) {
           setCurrentStep(processedSteps[0]);
+          console.log("Current step set to:", processedSteps[0]);
         }
       } catch (error) {
         console.error('Error loading flow for preview:', error);
+        setError("Failed to load flow data");
       } finally {
         setLoading(false);
       }
@@ -104,7 +138,7 @@ export default function FlowPreview() {
     fetchFlowData();
     
     // If no data or sample data is needed, use this
-    if (!id || id === 'sample') {
+    if (id === 'sample') {
       const sampleBranding: BrandingConfig = {
         logo_url: '/placeholder.svg',
         primary_color: '#9b87f5',
@@ -457,6 +491,15 @@ export default function FlowPreview() {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-quickstartify-purple" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen items-center justify-center flex-col">
+        <p className="text-lg mb-4">Error: {error}</p>
+        <Button onClick={() => window.history.back()}>Go Back</Button>
       </div>
     );
   }

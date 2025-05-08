@@ -45,7 +45,6 @@ import {
   FileInput,
   FileCheck,
   FormInput,
-  Notification,
   BellRing,
   Send,
   User,
@@ -121,7 +120,7 @@ const nodeTypes = {
 // Default flow initial nodes for new flows
 const initialNodes: AppNode[] = [
   {
-    id: 'start',
+    id: 'welcome-modal',
     type: 'modal',
     position: { x: 250, y: 5 },
     data: { 
@@ -297,19 +296,20 @@ const FlowBuilder = () => {
         // Set flow steps converting from DB model to app model
         const appFlowSteps = stepsData?.map(step => {
           // Safe casting of JSON fields to typed objects
-          const milestonesJson = step.styling && typeof step.styling === 'object' && 'milestones' in step.styling 
-            ? step.styling.milestones as Json 
-            : null;
+          const styling = step.styling as Record<string, any> || {};
+          const milestones = styling && styling.milestones 
+            ? convertJsonToMilestones(styling.milestones as Json)
+            : [];
             
-          const actionsJson = step.styling && typeof step.styling === 'object' && 'actions' in step.styling 
-            ? step.styling.actions as Json 
-            : null;
+          const actions = styling && styling.actions 
+            ? convertJsonToStepActions(styling.actions as Json)
+            : [];
             
           return {
             ...step,
             step_type: step.step_type as FlowStep['step_type'], // Cast to specific type
-            milestones: convertJsonToMilestones(milestonesJson),
-            actions: convertJsonToStepActions(actionsJson)
+            milestones: milestones,
+            actions: actions
           } as FlowStep;
         }) || [];
         
@@ -318,31 +318,26 @@ const FlowBuilder = () => {
         if (appFlowSteps && appFlowSteps.length > 0) {
           // Convert flow steps to nodes and edges
           const flowNodes: AppNode[] = appFlowSteps.map(step => {
-            const posX = step.styling && typeof step.styling === 'object' && 'position_x' in step.styling 
-              ? Number(step.styling.position_x)
+            const styling = step.styling as Record<string, any> || {};
+            const posX = styling && styling.position_x
+              ? Number(styling.position_x)
               : 0;
               
-            const posY = step.styling && typeof step.styling === 'object' && 'position_y' in step.styling 
-              ? Number(step.styling.position_y)
+            const posY = styling && styling.position_y
+              ? Number(styling.position_y)
               : 0;
             
             // Ensure we create properly typed NodeData object
             const nodeData: NodeData = {
               label: step.title,
               content: step.content || '',
-              milestones: convertJsonToMilestones(milestonesJson),
-              actions: convertJsonToStepActions(actionsJson),
-              styling: step.styling && typeof step.styling === 'object' 
-                ? {
-                    background: step.styling.background || 'bg-white',
-                    border: step.styling.border || 'border-purple-200',
-                    textColor: step.styling.textColor || 'text-foreground'
-                  }
-                : {
-                    background: 'bg-white',
-                    border: 'border-purple-200',
-                    textColor: 'text-foreground'
-                  },
+              milestones: step.milestones || [],
+              actions: step.actions || [],
+              styling: {
+                background: styling?.background || 'bg-white',
+                border: styling?.border || 'border-purple-200',
+                textColor: styling?.textColor || 'text-foreground'
+              },
               dom_selector: step.dom_selector || '',
               page_url: step.page_url || '',
               targeting_rules: step.targeting_rules || {}
@@ -362,10 +357,8 @@ const FlowBuilder = () => {
           // Create edges from flow step connections if they exist
           const flowEdges = [];
           appFlowSteps.forEach(step => {
-            const connections = step.styling && 
-                               typeof step.styling === 'object' && 
-                               'connections' in step.styling ? 
-                               step.styling.connections : [];
+            const styling = step.styling as Record<string, any> || {};
+            const connections = styling?.connections || [];
                                
             if (connections && Array.isArray(connections)) {
               connections.forEach((connection: any) => {
@@ -420,8 +413,8 @@ const FlowBuilder = () => {
       border: node.data.styling?.border || 'border-purple-200',
       textColor: node.data.styling?.textColor || 'text-foreground',
       // Convert complex objects to JSON-serializable format
-      milestones: node.data.milestones ? JSON.parse(JSON.stringify(node.data.milestones)) : [],
-      actions: node.data.actions ? JSON.parse(JSON.stringify(node.data.actions)) : []
+      milestones: node.data.milestones || [],
+      actions: node.data.actions || []
     };
   };
   
@@ -461,7 +454,16 @@ const FlowBuilder = () => {
             is_draft: true,
             is_active: false,
             user_id: user.id,
-            version: 1
+            version: 1,
+            branding_config: {
+              logo_url: '/placeholder.svg',
+              primary_color: '#9b87f5',
+              secondary_color: '#7e69ab',
+              background_style: 'gradient',
+              background_gradient: 'linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%)',
+              card_style: 'rounded',
+              font_family: 'Inter, sans-serif',
+            }
           })
           .select();
         
@@ -520,6 +522,10 @@ const FlowBuilder = () => {
         
         if (stepsError) throw stepsError;
       }
+
+      // Open the preview in a new tab after saving
+      const previewUrl = `/flow/${flowId}/preview`;
+      window.open(previewUrl, '_blank');
       
       toast({
         title: "Flow saved",
@@ -530,7 +536,7 @@ const FlowBuilder = () => {
       console.error('Error saving flow:', error);
       toast({
         title: "Error saving flow",
-        description: "Could not save flow data",
+        description: "Could not save flow data. Make sure node IDs are valid UUIDs.",
         variant: "destructive"
       });
     } finally {
@@ -585,17 +591,17 @@ const FlowBuilder = () => {
           <h3 className="text-lg font-semibold mb-4">Flow Nodes</h3>
           
           <div className="grid gap-2">
-            {/* Updated flow node tools */}
+            {/* Improved flow node tools */}
             <div 
               className="flow-node-item notification-node" 
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'tooltip');
-                event.dataTransfer.setData('application/reactflow/label', 'Notification');
+                event.dataTransfer.setData('application/reactflow/label', 'Notification Popup');
               }}
             >
               <BellRing className="h-4 w-4" />
-              <span>In-app Notification</span>
+              <span>Notification Popup</span>
             </div>
             
             <div 
@@ -615,23 +621,23 @@ const FlowBuilder = () => {
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'modal');
-                event.dataTransfer.setData('application/reactflow/label', 'Form');
+                event.dataTransfer.setData('application/reactflow/label', 'Data Collection Form');
               }}
             >
               <FormInput className="h-4 w-4" />
-              <span>Form Collection</span>
+              <span>Data Collection Form</span>
             </div>
             
             <div 
-              className="flow-node-item user-node" 
+              className="flow-node-item event-node" 
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'hotspot');
-                event.dataTransfer.setData('application/reactflow/label', 'User Action');
+                event.dataTransfer.setData('application/reactflow/label', 'User Event Tracker');
               }}
             >
               <User className="h-4 w-4" />
-              <span>User Action</span>
+              <span>User Event Tracker</span>
             </div>
             
             <div 
@@ -639,11 +645,11 @@ const FlowBuilder = () => {
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'checklist');
-                event.dataTransfer.setData('application/reactflow/label', 'Email');
+                event.dataTransfer.setData('application/reactflow/label', 'Email Sequence');
               }}
             >
               <Send className="h-4 w-4" />
-              <span>Email Trigger</span>
+              <span>Email Sequence</span>
             </div>
             
             <div 
@@ -651,11 +657,11 @@ const FlowBuilder = () => {
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'branch');
-                event.dataTransfer.setData('application/reactflow/label', 'Onboarding Step');
+                event.dataTransfer.setData('application/reactflow/label', 'Decision Branch');
               }}
             >
-              <UserPlus className="h-4 w-4" />
-              <span>Onboarding Step</span>
+              <ArrowRight className="h-4 w-4" />
+              <span>Decision Branch</span>
             </div>
             
             <div 
@@ -687,11 +693,11 @@ const FlowBuilder = () => {
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'apiTrigger');
-                event.dataTransfer.setData('application/reactflow/label', 'Integration');
+                event.dataTransfer.setData('application/reactflow/label', 'API Integration');
               }}
             >
               <Database className="h-4 w-4" />
-              <span>Integration</span>
+              <span>API Integration</span>
             </div>
             
             <div 
@@ -699,23 +705,11 @@ const FlowBuilder = () => {
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'abSwitch');
-                event.dataTransfer.setData('application/reactflow/label', 'A/B Test');
+                event.dataTransfer.setData('application/reactflow/label', 'A/B Testing');
               }}
             >
               <TestTube className="h-4 w-4" />
-              <span>A/B Test</span>
-            </div>
-
-            <div 
-              className="flow-node-item condition-node" 
-              draggable 
-              onDragStart={(event) => {
-                event.dataTransfer.setData('application/reactflow/type', 'branch');
-                event.dataTransfer.setData('application/reactflow/label', 'Condition');
-              }}
-            >
-              <ArrowRight className="h-4 w-4" />
-              <span>Condition</span>
+              <span>A/B Testing</span>
             </div>
           </div>
           
@@ -752,6 +746,17 @@ const FlowBuilder = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            <Button 
+              onClick={saveFlow} 
+              className="w-full mt-2 bg-quickstartify-purple hover:bg-quickstartify-purple/90"
+              disabled={saving}
+            >
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {saving ? "Saving..." : "Save & Preview Flow"}
+            </Button>
           </div>
         </div>
         
