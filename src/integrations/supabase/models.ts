@@ -153,3 +153,46 @@ export function convertJsonToStepActions(json: Json | null): StepAction[] {
     };
   });
 }
+
+// New helper function to convert model types to JSON for database storage
+export function convertMilestonesToJson(milestones: Milestone[]): Json[] {
+  if (!milestones || !Array.isArray(milestones)) return [];
+  return milestones.map(milestone => {
+    // Convert each milestone to a plain object that's JSON serializable
+    return {
+      id: milestone.id,
+      title: milestone.title,
+      subtitle: milestone.subtitle || '',
+      content: milestone.content || '',
+      formFields: milestone.formFields || [],
+      isCompleted: milestone.isCompleted || false
+    };
+  }) as Json[];
+}
+
+export function convertStepActionsToJson(actions: StepAction[]): Json[] {
+  if (!actions || !Array.isArray(actions)) return [];
+  return actions.map(action => {
+    // Convert each action to a plain object that's JSON serializable
+    return {
+      id: action.id,
+      type: action.type,
+      name: action.name,
+      endpoint: action.endpoint || '',
+      method: action.method || '',
+      headers: action.headers || {},
+      payload: action.payload || {},
+      trigger: action.trigger || '',
+      button_id: action.button_id || ''
+    };
+  }) as Json[];
+}
+
+// Generate a valid UUID for database compatibility
+export function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0,
+        v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}

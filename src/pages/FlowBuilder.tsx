@@ -51,7 +51,16 @@ import {
   UserPlus,
   ShieldCheck,
   Video,
-  Timer
+  Timer,
+  Rocket,
+  Target,
+  Lightbulb,
+  Workflow,
+  Route,
+  Check,
+  PersonStanding,
+  Sparkles,
+  MessageSquare
 } from 'lucide-react';
 import { TooltipNode } from '@/components/flow-builder/nodes/TooltipNode';
 import { ModalNode } from '@/components/flow-builder/nodes/ModalNode';
@@ -72,7 +81,10 @@ import {
   Milestone, 
   StepAction, 
   convertJsonToMilestones, 
-  convertJsonToStepActions 
+  convertJsonToStepActions,
+  convertMilestonesToJson,
+  convertStepActionsToJson,
+  generateUUID
 } from '@/integrations/supabase/models';
 import { Json } from '@/integrations/supabase/types';
 
@@ -117,10 +129,10 @@ const nodeTypes = {
   abSwitch: ABSwitchNode,
 };
 
-// Default flow initial nodes for new flows
+// Create UUID-based default nodes
 const initialNodes: AppNode[] = [
   {
-    id: 'welcome-modal',
+    id: generateUUID(),
     type: 'modal',
     position: { x: 250, y: 5 },
     data: { 
@@ -128,12 +140,12 @@ const initialNodes: AppNode[] = [
       content: 'Welcome to your onboarding flow!',
       milestones: [
         {
-          id: 'welcome-milestone-1',
+          id: generateUUID(),
           title: 'Welcome',
           subtitle: 'Get started with our product',
           formFields: [
             {
-              id: 'welcome-field-1',
+              id: generateUUID(),
               name: 'name',
               type: 'text',
               required: true,
@@ -142,7 +154,7 @@ const initialNodes: AppNode[] = [
               isButton: false
             },
             {
-              id: 'welcome-button-1',
+              id: generateUUID(),
               name: 'start-button',
               type: 'button',
               required: false,
@@ -233,9 +245,9 @@ const FlowBuilder = () => {
         y: event.clientY,
       });
       
-      // Generate a unique ID
+      // Generate a unique UUID
       const newNode = {
-        id: `${nodeType}-${Date.now()}`,
+        id: generateUUID(),
         type: nodeType,
         position,
         data: { 
@@ -413,8 +425,8 @@ const FlowBuilder = () => {
       border: node.data.styling?.border || 'border-purple-200',
       textColor: node.data.styling?.textColor || 'text-foreground',
       // Convert complex objects to JSON-serializable format
-      milestones: node.data.milestones || [],
-      actions: node.data.actions || []
+      milestones: convertMilestonesToJson(node.data.milestones || []),
+      actions: convertStepActionsToJson(node.data.actions || [])
     };
   };
   
@@ -501,7 +513,7 @@ const FlowBuilder = () => {
       // Prepare steps for saving - convert complex objects to JSON-serializable format
       const flowStepsToSave = nodes.map((node, index) => {
         return {
-          id: node.id,
+          id: node.id, // Using the UUID generated at node creation
           flow_id: flowId,
           title: node.data.label || `Step ${index + 1}`,
           content: node.data.content || '',
@@ -514,13 +526,16 @@ const FlowBuilder = () => {
         };
       });
       
-      // Save all steps
-      if (flowStepsToSave.length > 0) {
-        const { error: stepsError } = await supabase
+      // Save all steps one by one to avoid array serialization issues
+      for (const step of flowStepsToSave) {
+        const { error: stepError } = await supabase
           .from('flow_steps')
-          .insert(flowStepsToSave);
+          .insert(step);
         
-        if (stepsError) throw stepsError;
+        if (stepError) {
+          console.error('Error saving step:', stepError, step);
+          throw stepError;
+        }
       }
 
       // Open the preview in a new tab after saving
@@ -591,29 +606,29 @@ const FlowBuilder = () => {
           <h3 className="text-lg font-semibold mb-4">Flow Nodes</h3>
           
           <div className="grid gap-2">
-            {/* Improved flow node tools */}
+            {/* Updated flow node tools with better usability labels */}
             <div 
-              className="flow-node-item notification-node" 
-              draggable 
-              onDragStart={(event) => {
-                event.dataTransfer.setData('application/reactflow/type', 'tooltip');
-                event.dataTransfer.setData('application/reactflow/label', 'Notification Popup');
-              }}
-            >
-              <BellRing className="h-4 w-4" />
-              <span>Notification Popup</span>
-            </div>
-            
-            <div 
-              className="flow-node-item modal-node" 
+              className="flow-node-item onboarding-node" 
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'modal');
-                event.dataTransfer.setData('application/reactflow/label', 'Onboarding Modal');
+                event.dataTransfer.setData('application/reactflow/label', 'Welcome Screen');
               }}
             >
-              <LayoutGrid className="h-4 w-4" />
-              <span>Onboarding Modal</span>
+              <Rocket className="h-4 w-4" />
+              <span>Welcome Screen</span>
+            </div>
+            
+            <div 
+              className="flow-node-item tooltip-node" 
+              draggable 
+              onDragStart={(event) => {
+                event.dataTransfer.setData('application/reactflow/type', 'tooltip');
+                event.dataTransfer.setData('application/reactflow/label', 'Feature Tooltip');
+              }}
+            >
+              <Lightbulb className="h-4 w-4" />
+              <span>Feature Tooltip</span>
             </div>
             
             <div 
@@ -621,47 +636,47 @@ const FlowBuilder = () => {
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'modal');
-                event.dataTransfer.setData('application/reactflow/label', 'Data Collection Form');
+                event.dataTransfer.setData('application/reactflow/label', 'User Survey');
               }}
             >
               <FormInput className="h-4 w-4" />
-              <span>Data Collection Form</span>
+              <span>User Survey</span>
+            </div>
+
+            <div 
+              className="flow-node-item hotspot-node" 
+              draggable 
+              onDragStart={(event) => {
+                event.dataTransfer.setData('application/reactflow/type', 'hotspot');
+                event.dataTransfer.setData('application/reactflow/label', 'Feature Highlight');
+              }}
+            >
+              <Target className="h-4 w-4" />
+              <span>Feature Highlight</span>
             </div>
             
             <div 
               className="flow-node-item event-node" 
               draggable 
               onDragStart={(event) => {
-                event.dataTransfer.setData('application/reactflow/type', 'hotspot');
-                event.dataTransfer.setData('application/reactflow/label', 'User Event Tracker');
-              }}
-            >
-              <User className="h-4 w-4" />
-              <span>User Event Tracker</span>
-            </div>
-            
-            <div 
-              className="flow-node-item email-node" 
-              draggable 
-              onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'checklist');
-                event.dataTransfer.setData('application/reactflow/label', 'Email Sequence');
+                event.dataTransfer.setData('application/reactflow/label', 'Progress Checklist');
               }}
             >
-              <Send className="h-4 w-4" />
-              <span>Email Sequence</span>
+              <Check className="h-4 w-4" />
+              <span>Progress Checklist</span>
             </div>
             
             <div 
-              className="flow-node-item onboarding-node" 
+              className="flow-node-item branch-node" 
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'branch');
-                event.dataTransfer.setData('application/reactflow/label', 'Decision Branch');
+                event.dataTransfer.setData('application/reactflow/label', 'User Path Decision');
               }}
             >
-              <ArrowRight className="h-4 w-4" />
-              <span>Decision Branch</span>
+              <Route className="h-4 w-4" />
+              <span>User Path Decision</span>
             </div>
             
             <div 
@@ -669,11 +684,11 @@ const FlowBuilder = () => {
               draggable 
               onDragStart={(event) => {
                 event.dataTransfer.setData('application/reactflow/type', 'modal');
-                event.dataTransfer.setData('application/reactflow/label', 'Video Tutorial');
+                event.dataTransfer.setData('application/reactflow/label', 'Tutorial Video');
               }}
             >
               <Video className="h-4 w-4" />
-              <span>Video Tutorial</span>
+              <span>Tutorial Video</span>
             </div>
             
             <div 
@@ -689,27 +704,27 @@ const FlowBuilder = () => {
             </div>
             
             <div 
-              className="flow-node-item api-trigger-node" 
+              className="flow-node-item persona-node" 
               draggable 
               onDragStart={(event) => {
-                event.dataTransfer.setData('application/reactflow/type', 'apiTrigger');
-                event.dataTransfer.setData('application/reactflow/label', 'API Integration');
+                event.dataTransfer.setData('application/reactflow/type', 'modal');
+                event.dataTransfer.setData('application/reactflow/label', 'User Persona Path');
               }}
             >
-              <Database className="h-4 w-4" />
-              <span>API Integration</span>
+              <PersonStanding className="h-4 w-4" />
+              <span>User Persona Path</span>
             </div>
             
             <div 
-              className="flow-node-item ab-switch-node" 
+              className="flow-node-item chat-node" 
               draggable 
               onDragStart={(event) => {
-                event.dataTransfer.setData('application/reactflow/type', 'abSwitch');
-                event.dataTransfer.setData('application/reactflow/label', 'A/B Testing');
+                event.dataTransfer.setData('application/reactflow/type', 'modal');
+                event.dataTransfer.setData('application/reactflow/label', 'Chat Assistance');
               }}
             >
-              <TestTube className="h-4 w-4" />
-              <span>A/B Testing</span>
+              <MessageSquare className="h-4 w-4" />
+              <span>Chat Assistance</span>
             </div>
           </div>
           
