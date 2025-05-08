@@ -88,26 +88,6 @@ export interface StepAction {
   button_id?: string;
 }
 
-export interface FlowVariation {
-  id: string;
-  flow_id: string;
-  name: string;
-  traffic_percentage: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface FlowAnalytic {
-  id: string;
-  flow_id: string;
-  step_id: string | null;
-  variation_id: string | null;
-  user_id: string | null;
-  event_type: 'view' | 'complete' | 'skip' | 'click';
-  created_at: string;
-}
-
 // Import Json type for type casting
 import { Json } from './types';
 
@@ -154,27 +134,47 @@ export function convertJsonToStepActions(json: Json | null): StepAction[] {
   });
 }
 
-// New helper function to convert model types to JSON for database storage
+// Fixed: Properly cast milestone objects to Json type
 export function convertMilestonesToJson(milestones: Milestone[]): Json[] {
   if (!milestones || !Array.isArray(milestones)) return [];
   return milestones.map(milestone => {
-    // Convert each milestone to a plain object that's JSON serializable
-    return {
+    // Convert form fields to plain objects 
+    const formFields = milestone.formFields ? milestone.formFields.map(field => ({
+      id: field.id,
+      name: field.name,
+      type: field.type,
+      required: field.required,
+      validation: field.validation || '',
+      placeholder: field.placeholder || '',
+      richTextContent: field.richTextContent || '',
+      isButton: field.isButton || false,
+      buttonAction: field.buttonAction || '',
+      buttonApiEndpoint: field.buttonApiEndpoint || '',
+      buttonCollectMetrics: field.buttonCollectMetrics || false,
+      buttonLabel: field.buttonLabel || '',
+      options: field.options || []
+    })) : [];
+    
+    // Create a plain object for the milestone
+    const plainObject = {
       id: milestone.id,
       title: milestone.title,
       subtitle: milestone.subtitle || '',
       content: milestone.content || '',
-      formFields: milestone.formFields || [],
+      formFields: formFields,
       isCompleted: milestone.isCompleted || false
     };
-  }) as Json[];
+    
+    // Cast to Json type
+    return plainObject as unknown as Json;
+  });
 }
 
 export function convertStepActionsToJson(actions: StepAction[]): Json[] {
   if (!actions || !Array.isArray(actions)) return [];
   return actions.map(action => {
     // Convert each action to a plain object that's JSON serializable
-    return {
+    const plainObject = {
       id: action.id,
       type: action.type,
       name: action.name,
@@ -185,7 +185,75 @@ export function convertStepActionsToJson(actions: StepAction[]): Json[] {
       trigger: action.trigger || '',
       button_id: action.button_id || ''
     };
-  }) as Json[];
+    
+    // Cast to Json type
+    return plainObject as unknown as Json;
+  });
+}
+
+// Convert BrandingConfig to Json for database storage
+export function convertBrandingConfigToJson(config: BrandingConfig | null): Json | null {
+  if (!config) return null;
+  
+  // Convert footer links to plain objects
+  const footerLinks = config.footer_links ? config.footer_links.map(link => ({
+    text: link.text,
+    url: link.url
+  })) : [];
+  
+  // Create a plain object for the branding config
+  const plainObject = {
+    logo_url: config.logo_url || '',
+    primary_color: config.primary_color || '',
+    secondary_color: config.secondary_color || '',
+    background_style: config.background_style || 'color',
+    background_color: config.background_color || '',
+    background_gradient: config.background_gradient || '',
+    background_image_url: config.background_image_url || '',
+    animation_style: config.animation_style || '',
+    card_style: config.card_style || 'rounded',
+    font_family: config.font_family || '',
+    footer_links: footerLinks,
+    privacy_policy_url: config.privacy_policy_url || '',
+    terms_url: config.terms_url || '',
+    custom_css: config.custom_css || ''
+  };
+  
+  // Cast to Json type
+  return plainObject as unknown as Json;
+}
+
+// Convert Json to BrandingConfig
+export function convertJsonToBrandingConfig(json: Json | null): BrandingConfig | null {
+  if (!json) return null;
+  
+  const brandingData = json as Record<string, any>;
+  
+  // Convert footer links from Json
+  const footerLinks = brandingData.footer_links && Array.isArray(brandingData.footer_links)
+    ? brandingData.footer_links.map((link: any) => ({
+        text: link.text || '',
+        url: link.url || ''
+      }))
+    : [];
+  
+  // Create branding config from Json
+  return {
+    logo_url: brandingData.logo_url,
+    primary_color: brandingData.primary_color,
+    secondary_color: brandingData.secondary_color,
+    background_style: brandingData.background_style as 'color' | 'gradient' | 'image',
+    background_color: brandingData.background_color,
+    background_gradient: brandingData.background_gradient,
+    background_image_url: brandingData.background_image_url,
+    animation_style: brandingData.animation_style as 'fade' | 'slide' | 'zoom' | 'flip' | 'bounce',
+    card_style: brandingData.card_style as 'rounded' | 'sharp' | 'floating' | 'bordered',
+    font_family: brandingData.font_family,
+    footer_links: footerLinks,
+    privacy_policy_url: brandingData.privacy_policy_url,
+    terms_url: brandingData.terms_url,
+    custom_css: brandingData.custom_css
+  };
 }
 
 // Generate a valid UUID for database compatibility
@@ -195,4 +263,29 @@ export function generateUUID(): string {
         v = c === 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
+}
+
+// Helper function to serialize complex objects for database storage
+export function serializeForDatabase(obj: any): any {
+  // Handle arrays recursively
+  if (Array.isArray(obj)) {
+    return obj.map(item => serializeForDatabase(item));
+  }
+  
+  // Handle objects recursively
+  if (obj && typeof obj === 'object') {
+    const result: Record<string, any> = {};
+    
+    for (const [key, value] of Object.entries(obj)) {
+      // Skip functions and undefined values
+      if (typeof value !== 'function' && value !== undefined) {
+        result[key] = serializeForDatabase(value);
+      }
+    }
+    
+    return result;
+  }
+  
+  // Return primitives as-is
+  return obj;
 }
