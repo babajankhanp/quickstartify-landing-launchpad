@@ -6,11 +6,20 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, Check, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Flow, FlowStep, Milestone, FormField, BrandingConfig, convertJsonToMilestones } from "@/integrations/supabase/models";
+import { 
+  Flow, 
+  FlowStep, 
+  Milestone, 
+  FormField, 
+  BrandingConfig, 
+  convertJsonToMilestones, 
+  convertJsonToBrandingConfig 
+} from "@/integrations/supabase/models";
 import { RichTextPreview } from "@/components/ui/rich-text-editor";
 import { Json } from "@/integrations/supabase/types";
+import { toast } from "@/components/ui/use-toast";
 
 // Define our extended flow step type to add milestones
 interface ExtendedFlowStep extends Omit<FlowStep, 'step_type'> {
@@ -130,6 +139,11 @@ export default function FlowPreview() {
       } catch (error) {
         console.error('Error loading flow for preview:', error);
         setError("Failed to load flow data");
+        toast({
+          variant: "destructive",
+          title: "Error loading flow",
+          description: "Could not load the flow data. Please try again.",
+        });
       } finally {
         setLoading(false);
       }
@@ -328,7 +342,15 @@ export default function FlowPreview() {
     } else if (action === 'previous') {
       handlePrevious();
     } else if (action === 'complete') {
-      alert('Onboarding completed! Thank you.');
+      toast({
+        title: "Onboarding completed",
+        description: "Thank you for completing the onboarding flow!",
+        action: (
+          <div className="h-8 w-8 bg-green-500/20 rounded-full flex items-center justify-center">
+            <Check className="h-4 w-4 text-green-500" />
+          </div>
+        ),
+      });
     }
     
     // Log analytics
@@ -369,7 +391,7 @@ export default function FlowPreview() {
         return (
           <div key={field.id} className="mt-4">
             <Button 
-              className="bg-quickstartify-purple hover:bg-quickstartify-purple/90 w-full"
+              className={`w-full ${getPrimaryButtonStyles()}`}
               onClick={() => handleButtonClick(field.id, field.buttonAction || 'next')}
             >
               {field.buttonLabel || 'Next'}
@@ -390,6 +412,7 @@ export default function FlowPreview() {
               value={formData[field.id] || ''}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
               required={field.required}
+              className={getInputStyles()}
             />
           )}
           
@@ -401,6 +424,7 @@ export default function FlowPreview() {
               value={formData[field.id] || ''}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
               required={field.required}
+              className={getInputStyles()}
             />
           )}
           
@@ -410,7 +434,7 @@ export default function FlowPreview() {
               value={formData[field.id] || ''}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
               required={field.required}
-              className="w-full p-2 border rounded-md"
+              className={`w-full p-2 border rounded-md ${getInputStyles()}`}
             >
               <option value="">{field.placeholder}</option>
               {field.options?.map((option) => (
@@ -430,7 +454,7 @@ export default function FlowPreview() {
                     id={`${field.id}-${option.value}`}
                     checked={formData[`${field.id}-${option.value}`] || false}
                     onChange={(e) => handleFieldChange(`${field.id}-${option.value}`, e.target.checked)}
-                    className="mr-2"
+                    className={`mr-2 ${getCheckboxStyles()}`}
                   />
                   <Label htmlFor={`${field.id}-${option.value}`}>{option.label}</Label>
                 </div>
@@ -442,20 +466,48 @@ export default function FlowPreview() {
     });
   };
 
+  // Helper functions for styling based on branding config
+  const getPrimaryButtonStyles = () => {
+    if (!brandingConfig?.primary_color) return 'bg-quickstartify-purple hover:bg-quickstartify-purple/90';
+    
+    // Custom button style based on primary color
+    const primaryColor = brandingConfig.primary_color;
+    return `bg-[${primaryColor}] hover:bg-opacity-90`;
+  };
+
+  const getInputStyles = () => {
+    if (!brandingConfig) return '';
+    
+    let styles = '';
+    
+    if (brandingConfig.secondary_color) {
+      styles += ` focus:border-[${brandingConfig.secondary_color}] focus:ring-[${brandingConfig.secondary_color}]`;
+    }
+    
+    return styles;
+  };
+
+  const getCheckboxStyles = () => {
+    if (!brandingConfig?.primary_color) return '';
+    return `accent-[${brandingConfig.primary_color}]`;
+  };
+
   // Get background style based on branding config
   const getBackgroundStyle = () => {
     if (!brandingConfig) {
       return 'bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/50 dark:to-blue-900/50';
     }
     
-    if (brandingConfig.background_style === 'color') {
+    if (brandingConfig.background_style === 'color' && brandingConfig.background_color) {
       return `bg-[${brandingConfig.background_color}]`;
-    } else if (brandingConfig.background_style === 'gradient') {
-      return brandingConfig.background_gradient 
-        ? `bg-gradient-custom` 
-        : 'bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/50 dark:to-blue-900/50';
-    } else if (brandingConfig.background_style === 'image') {
-      return `bg-cover bg-center`;
+    } else if (brandingConfig.background_style === 'gradient' && brandingConfig.background_gradient) {
+      // Create a style object for the gradient
+      const styleObject = {
+        background: brandingConfig.background_gradient
+      };
+      return { ...styleObject };
+    } else if (brandingConfig.background_style === 'image' && brandingConfig.background_image_url) {
+      return 'bg-cover bg-center';
     }
     
     return 'bg-white dark:bg-gray-900';
@@ -487,6 +539,33 @@ export default function FlowPreview() {
     }
   };
 
+  // Get font family style
+  const getFontFamilyStyle = () => {
+    if (!brandingConfig?.font_family) return {};
+    return { 
+      fontFamily: brandingConfig.font_family 
+    };
+  };
+
+  // Apply custom CSS if provided
+  useEffect(() => {
+    if (brandingConfig?.custom_css) {
+      // Create a style element
+      const styleEl = document.createElement('style');
+      styleEl.id = 'flow-custom-css';
+      styleEl.textContent = brandingConfig.custom_css;
+      document.head.appendChild(styleEl);
+      
+      // Cleanup on unmount
+      return () => {
+        const existingStyle = document.getElementById('flow-custom-css');
+        if (existingStyle) {
+          existingStyle.remove();
+        }
+      };
+    }
+  }, [brandingConfig?.custom_css]);
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -498,7 +577,10 @@ export default function FlowPreview() {
   if (error) {
     return (
       <div className="flex h-screen items-center justify-center flex-col">
-        <p className="text-lg mb-4">Error: {error}</p>
+        <div className="flex items-center gap-2 text-destructive mb-4">
+          <AlertCircle className="h-5 w-5" />
+          <p className="text-lg">Error: {error}</p>
+        </div>
         <Button onClick={() => window.history.back()}>Go Back</Button>
       </div>
     );
@@ -507,7 +589,10 @@ export default function FlowPreview() {
   if (!currentStep) {
     return (
       <div className="flex h-screen items-center justify-center flex-col">
-        <p className="text-lg mb-4">No flow steps found.</p>
+        <div className="flex items-center gap-2 text-amber-500 mb-4">
+          <AlertCircle className="h-5 w-5" />
+          <p className="text-lg">No flow steps found.</p>
+        </div>
         <Button onClick={() => window.history.back()}>Go Back</Button>
       </div>
     );
@@ -516,10 +601,20 @@ export default function FlowPreview() {
   // Current milestone
   const milestone = currentStep.milestones?.[currentMilestoneIndex];
 
+  // Determine if background is a style object or a class string
+  const backgroundStyle = getBackgroundStyle();
+  const isBackgroundObject = typeof backgroundStyle === 'object';
+  
   return (
     <div 
-      className={`min-h-screen flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 ${getBackgroundStyle()}`}
-      style={brandingConfig?.background_image_url ? { backgroundImage: `url(${brandingConfig.background_image_url})` } : {}}
+      className={`min-h-screen flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 ${isBackgroundObject ? '' : backgroundStyle}`}
+      style={{
+        ...(isBackgroundObject ? backgroundStyle : {}),
+        ...(brandingConfig?.background_image_url && brandingConfig?.background_style === 'image' 
+          ? { backgroundImage: `url(${brandingConfig.background_image_url})` } 
+          : {}),
+        ...getFontFamilyStyle()
+      }}
     >
       {/* Optional logo */}
       {brandingConfig?.logo_url && (
@@ -528,6 +623,11 @@ export default function FlowPreview() {
             src={brandingConfig.logo_url} 
             alt="Logo" 
             className="h-12 max-w-xs"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = '/placeholder.svg';
+              target.alt = 'Failed to load logo';
+            }}
           />
         </div>
       )}
@@ -550,9 +650,23 @@ export default function FlowPreview() {
                 <div 
                   key={m.id} 
                   className={`h-1.5 rounded-full flex-grow max-w-8 ${
-                    idx === currentMilestoneIndex ? 'bg-quickstartify-purple' : 
-                    idx < currentMilestoneIndex ? 'bg-quickstartify-purple/50' : 'bg-gray-200'
+                    idx === currentMilestoneIndex 
+                      ? brandingConfig?.primary_color 
+                        ? `bg-[${brandingConfig.primary_color}]` 
+                        : 'bg-quickstartify-purple' 
+                      : idx < currentMilestoneIndex 
+                        ? brandingConfig?.primary_color 
+                          ? `bg-[${brandingConfig.primary_color}]/50` 
+                          : 'bg-quickstartify-purple/50' 
+                        : 'bg-gray-200'
                   }`}
+                  style={{
+                    backgroundColor: idx === currentMilestoneIndex 
+                      ? brandingConfig?.primary_color || ''
+                      : idx < currentMilestoneIndex 
+                        ? `${brandingConfig?.primary_color}80` || ''
+                        : ''
+                  }}
                 />
               ))}
             </div>
@@ -572,19 +686,32 @@ export default function FlowPreview() {
         </CardContent>
         
         {/* Footer with branding */}
-        {(brandingConfig?.footer_links?.length || brandingConfig?.privacy_policy_url) && (
+        {((brandingConfig?.footer_links && brandingConfig.footer_links.length > 0) || 
+          brandingConfig?.privacy_policy_url || 
+          brandingConfig?.terms_url) && (
           <CardFooter className="flex justify-between border-t pt-4 text-xs text-muted-foreground">
             <div>
               {brandingConfig?.footer_links?.map((link, idx) => (
                 <span key={idx}>
                   {idx > 0 && ' • '}
-                  <a href={link.url} className="hover:underline">{link.text}</a>
+                  <a href={link.url} className="hover:underline" target="_blank" rel="noopener noreferrer">
+                    {link.text}
+                  </a>
                 </span>
               ))}
             </div>
-            {brandingConfig?.privacy_policy_url && (
-              <a href={brandingConfig.privacy_policy_url} className="hover:underline">Privacy Policy</a>
-            )}
+            <div className="flex gap-3">
+              {brandingConfig?.privacy_policy_url && (
+                <a href={brandingConfig.privacy_policy_url} className="hover:underline" target="_blank" rel="noopener noreferrer">
+                  Privacy Policy
+                </a>
+              )}
+              {brandingConfig?.terms_url && (
+                <a href={brandingConfig.terms_url} className="hover:underline" target="_blank" rel="noopener noreferrer">
+                  Terms
+                </a>
+              )}
+            </div>
           </CardFooter>
         )}
       </Card>
