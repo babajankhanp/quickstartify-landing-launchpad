@@ -5,11 +5,15 @@ import { Json } from "./types";
 export interface Flow {
   id: string;
   name: string;
+  title: string;
   description?: string;
   status: string;
   created_at: string;
   updated_at: string;
   user_id: string;
+  is_active?: boolean;
+  is_draft?: boolean;
+  version?: number;
   branding_config?: BrandingConfig;
   published_url?: string;
   embed_code?: string;
@@ -100,7 +104,12 @@ export interface BrandingConfig {
   custom_css?: string;
   privacy_policy_url?: string;
   terms_url?: string;
-  footer_links?: { text: string; url: string }[];
+  footer_links?: FooterLink[];
+}
+
+export interface FooterLink {
+  text: string;
+  url: string;
 }
 
 // Helper function to convert JSON to typed objects
@@ -156,10 +165,22 @@ export function convertMilestonesToJson(milestones: Milestone[]): Json {
   return milestones.map(milestone => ({
     id: milestone.id,
     title: milestone.title,
-    subtitle: milestone.subtitle,
-    content: milestone.content,
-    formFields: milestone.formFields || []
-  }));
+    subtitle: milestone.subtitle || '',
+    content: milestone.content || '',
+    formFields: (milestone.formFields || []).map(field => ({
+      id: field.id,
+      name: field.name,
+      type: field.type,
+      required: field.required,
+      placeholder: field.placeholder || '',
+      validation: field.validation || '',
+      options: field.options || [],
+      isButton: field.isButton || false,
+      buttonLabel: field.buttonLabel || '',
+      buttonAction: field.buttonAction || '',
+      buttonCollectMetrics: field.buttonCollectMetrics || false
+    }))
+  })) as Json;
 }
 
 // Helper function to convert StepActions to JSON
@@ -170,7 +191,7 @@ export function convertStepActionsToJson(actions: StepAction[]): Json {
     trigger: action.trigger,
     config: action.config || {},
     enabled: action.enabled !== false
-  }));
+  })) as Json;
 }
 
 // Helper function to convert JSON to BrandingConfig
@@ -197,6 +218,26 @@ export function convertJsonToBrandingConfig(json: Json): BrandingConfig {
     terms_url: config.terms_url || '',
     footer_links: Array.isArray(config.footer_links) ? config.footer_links : []
   };
+}
+
+// Helper function to convert BrandingConfig to JSON
+export function convertBrandingConfigToJson(config: BrandingConfig): Json {
+  return {
+    primary_color: config.primary_color || '',
+    secondary_color: config.secondary_color || '',
+    background_style: config.background_style || 'gradient',
+    background_color: config.background_color || '',
+    background_gradient: config.background_gradient || '',
+    background_image_url: config.background_image_url || '',
+    logo_url: config.logo_url || '',
+    font_family: config.font_family || '',
+    card_style: config.card_style || 'rounded',
+    animation_style: config.animation_style || 'none',
+    custom_css: config.custom_css || '',
+    privacy_policy_url: config.privacy_policy_url || '',
+    terms_url: config.terms_url || '',
+    footer_links: config.footer_links || []
+  } as Json;
 }
 
 // Helper function to generate a UUID
