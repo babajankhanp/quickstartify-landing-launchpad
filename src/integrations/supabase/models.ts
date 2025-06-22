@@ -26,6 +26,11 @@ export interface FlowStep {
   created_at: string;
   updated_at: string;
   styling?: Record<string, any>;
+  milestones?: Milestone[];
+  actions?: StepAction[];
+  dom_selector?: string;
+  page_url?: string;
+  targeting_rules?: Record<string, any>;
 }
 
 export interface FlowAnalytics {
@@ -71,6 +76,14 @@ export interface FormField {
   buttonLabel?: string;
   buttonAction?: string;
   buttonCollectMetrics?: boolean;
+}
+
+export interface StepAction {
+  id: string;
+  type: string;
+  trigger: string;
+  config?: Record<string, any>;
+  enabled?: boolean;
 }
 
 export interface BrandingConfig {
@@ -119,6 +132,45 @@ export function convertJsonToMilestones(json: Json): Milestone[] {
         : []
     };
   });
+}
+
+// Helper function to convert JSON to StepAction objects
+export function convertJsonToStepActions(json: Json): StepAction[] {
+  if (!json || !Array.isArray(json)) {
+    return [];
+  }
+
+  return json.map((item: any) => {
+    return {
+      id: item.id || '',
+      type: item.type || '',
+      trigger: item.trigger || '',
+      config: item.config || {},
+      enabled: item.enabled !== false
+    };
+  });
+}
+
+// Helper function to convert Milestones to JSON
+export function convertMilestonesToJson(milestones: Milestone[]): Json {
+  return milestones.map(milestone => ({
+    id: milestone.id,
+    title: milestone.title,
+    subtitle: milestone.subtitle,
+    content: milestone.content,
+    formFields: milestone.formFields || []
+  }));
+}
+
+// Helper function to convert StepActions to JSON
+export function convertStepActionsToJson(actions: StepAction[]): Json {
+  return actions.map(action => ({
+    id: action.id,
+    type: action.type,
+    trigger: action.trigger,
+    config: action.config || {},
+    enabled: action.enabled !== false
+  }));
 }
 
 // Helper function to convert JSON to BrandingConfig
