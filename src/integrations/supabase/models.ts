@@ -237,7 +237,7 @@ export function convertBrandingConfigToJson(config: BrandingConfig): Json {
     privacy_policy_url: config.privacy_policy_url || '',
     terms_url: config.terms_url || '',
     footer_links: config.footer_links || []
-  } as Json;
+  };
 }
 
 // Helper function to generate a UUID

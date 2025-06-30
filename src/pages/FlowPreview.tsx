@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, 
   ChevronLeft, 
@@ -15,7 +15,12 @@ import {
   ArrowLeft,
   Monitor,
   Smartphone,
-  Tablet
+  Tablet,
+  Eye,
+  Settings,
+  Palette,
+  Code,
+  Share2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -85,7 +90,11 @@ export default function FlowPreview() {
         console.log("Flow data fetched:", flowData);
         
         // Cast the database response to our Flow type
-        const typedFlow = flowData as unknown as Flow;
+        const typedFlow = {
+          ...flowData,
+          name: flowData.title || flowData.name || 'Untitled Flow',
+          status: flowData.status || 'draft'
+        } as Flow;
         setFlow(typedFlow);
         
         // Get branding config from database or flow data
@@ -566,12 +575,12 @@ export default function FlowPreview() {
   const getDeviceContainerStyles = () => {
     switch (deviceType) {
       case 'mobile':
-        return 'max-w-[375px]';
+        return 'max-w-[375px] mx-auto';
       case 'tablet':
-        return 'max-w-[768px]';
+        return 'max-w-[768px] mx-auto';
       case 'desktop':
       default:
-        return 'max-w-full';
+        return 'max-w-2xl mx-auto';
     }
   };
 
@@ -596,32 +605,39 @@ export default function FlowPreview() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-quickstartify-purple" />
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-4" />
+          <p className="text-slate-600 dark:text-slate-400">Loading preview...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center flex-col">
-        <div className="flex items-center gap-2 text-destructive mb-4">
+      <div className="flex h-screen items-center justify-center flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <div className="flex items-center gap-2 text-red-500 mb-4">
           <AlertCircle className="h-5 w-5" />
           <p className="text-lg">Error: {error}</p>
         </div>
-        <Button onClick={() => window.history.back()}>Go Back</Button>
+        <Button onClick={() => window.history.back()} variant="outline">
+          Go Back
+        </Button>
       </div>
     );
   }
 
   if (!currentStep) {
     return (
-      <div className="flex h-screen items-center justify-center flex-col">
+      <div className="flex h-screen items-center justify-center flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
         <div className="flex items-center gap-2 text-amber-500 mb-4">
           <AlertCircle className="h-5 w-5" />
           <p className="text-lg">No flow steps found.</p>
         </div>
-        <Button onClick={() => window.history.back()}>Go Back</Button>
+        <Button onClick={() => window.history.back()} variant="outline">
+          Go Back
+        </Button>
       </div>
     );
   }
@@ -629,88 +645,109 @@ export default function FlowPreview() {
   // Current milestone
   const milestone = currentStep.milestones?.[currentMilestoneIndex];
 
-  // Determine if background is a style object or a class string
-  const backgroundStyle = getBackgroundStyle();
-  const isBackgroundObject = typeof backgroundStyle === 'object';
-  
   return (
-    <div className="flex flex-col h-screen">
-      {/* Top navigation bar with device controls */}
-      <div className="bg-white dark:bg-gray-900 border-b py-2 px-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      {/* Enhanced top navigation bar */}
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 py-3 px-6 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => navigate(-1)}
+            className="h-9 w-9"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="font-medium">{flow?.name || 'Flow Preview'}</h1>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+              <Eye className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <h1 className="font-semibold text-lg">{flow?.title || flow?.name || 'Flow Preview'}</h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Live Preview</p>
+            </div>
+          </div>
+          <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+            Live
+          </Badge>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Button
-            variant={deviceType === 'mobile' ? 'default' : 'outline'} 
-            size="sm"
-            onClick={() => setDeviceType('mobile')}
-            className="px-2"
-          >
-            <Smartphone className="h-4 w-4" />
-            <span className="ml-1 hidden sm:inline">Mobile</span>
-          </Button>
-          <Button
-            variant={deviceType === 'tablet' ? 'default' : 'outline'} 
-            size="sm"
-            onClick={() => setDeviceType('tablet')}
-            className="px-2"
-          >
-            <Tablet className="h-4 w-4" />
-            <span className="ml-1 hidden sm:inline">Tablet</span>
-          </Button>
-          <Button 
-            variant={deviceType === 'desktop' ? 'default' : 'outline'} 
-            size="sm"
-            onClick={() => setDeviceType('desktop')}
-            className="px-2"
-          >
-            <Monitor className="h-4 w-4" />
-            <span className="ml-1 hidden sm:inline">Desktop</span>
-          </Button>
-        </div>
-        
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Device controls */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+            <Button
+              variant={deviceType === 'mobile' ? 'default' : 'ghost'} 
+              size="sm"
+              onClick={() => setDeviceType('mobile')}
+              className="h-8 px-3"
+            >
+              <Smartphone className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={deviceType === 'tablet' ? 'default' : 'ghost'} 
+              size="sm"
+              onClick={() => setDeviceType('tablet')}
+              className="h-8 px-3"
+            >
+              <Tablet className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant={deviceType === 'desktop' ? 'default' : 'ghost'} 
+              size="sm"
+              onClick={() => setDeviceType('desktop')}
+              className="h-8 px-3"
+            >
+              <Monitor className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <div className="w-px h-6 bg-slate-200 dark:bg-slate-700" />
+          
+          {/* Action buttons */}
           {id && (
-            <>
+            <div className="flex items-center gap-2">
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => navigate(`/flow/${id}/branding`)}
+                className="h-9"
               >
+                <Palette className="h-4 w-4 mr-2" />
                 Branding
               </Button>
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => navigate(`/builder/${id}`)}
+                className="h-9"
               >
+                <Settings className="h-4 w-4 mr-2" />
                 Builder
               </Button>
-            </>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="h-9"
+              >
+                <Share2 className="h-4 w-4 mr-2" />
+                Share
+              </Button>
+            </div>
           )}
         </div>
       </div>
       
-      {/* Preview content with device frame */}
-      <div className="flex-1 bg-gray-100 dark:bg-gray-800 overflow-auto p-4 flex justify-center">
+      {/* Enhanced preview content */}
+      <div className="flex-1 overflow-auto p-6">
         <div className={`transition-all duration-300 ${getDeviceContainerStyles()}`}>
           <div 
-            className={`min-h-[calc(100vh-9rem)] flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 ${isBackgroundObject ? '' : backgroundStyle}`}
+            className="min-h-[600px] flex flex-col items-center justify-center py-12 px-6 rounded-2xl shadow-2xl"
             style={{
-              ...(isBackgroundObject ? backgroundStyle : {}),
+              background: brandingConfig?.background_gradient || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               ...(brandingConfig?.background_image_url && brandingConfig?.background_style === 'image' 
-                ? { backgroundImage: `url(${brandingConfig.background_image_url})` } 
+                ? { backgroundImage: `url(${brandingConfig.background_image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } 
                 : {}),
-              ...getFontFamilyStyle()
             }}
           >
             {/* Optional logo */}
@@ -729,51 +766,45 @@ export default function FlowPreview() {
               </div>
             )}
             
-            <Card className={`w-full max-w-md mx-auto ${getCardClass()} ${getAnimationStyle()}`}>
-              <CardHeader>
-                <CardTitle className="text-2xl font-bold text-center">
+            <Card className="w-full max-w-md mx-auto shadow-2xl border-0 backdrop-blur-sm bg-white/95 dark:bg-slate-900/95">
+              <CardHeader className="text-center pb-4">
+                <CardTitle className="text-2xl font-bold">
                   {milestone?.title || currentStep.title}
                 </CardTitle>
                 {milestone?.subtitle && (
-                  <p className="text-center text-muted-foreground">{milestone.subtitle}</p>
+                  <p className="text-slate-600 dark:text-slate-400 mt-2">{milestone.subtitle}</p>
                 )}
               </CardHeader>
               
-              {/* Milestone indicator */}
+              {/* Enhanced milestone indicator */}
               {currentStep.milestones && currentStep.milestones.length > 1 && (
-                <div className="px-6">
-                  <div className="flex gap-1 justify-center">
+                <div className="px-6 pb-4">
+                  <div className="flex gap-2 justify-center">
                     {currentStep.milestones.map((m, idx) => (
                       <div 
                         key={m.id} 
-                        className={`h-1.5 rounded-full flex-grow max-w-8 ${
+                        className={`h-2 rounded-full transition-all duration-300 ${
                           idx === currentMilestoneIndex 
-                            ? brandingConfig?.primary_color 
-                              ? `bg-[${brandingConfig.primary_color}]` 
-                              : 'bg-quickstartify-purple' 
+                            ? 'bg-purple-500 w-8' 
                             : idx < currentMilestoneIndex 
-                              ? brandingConfig?.primary_color 
-                                ? `bg-[${brandingConfig.primary_color}]/50` 
-                                : 'bg-quickstartify-purple/50' 
-                              : 'bg-gray-200'
+                              ? 'bg-purple-300 w-2' 
+                              : 'bg-slate-200 dark:bg-slate-700 w-2'
                         }`}
-                        style={{
-                          backgroundColor: idx === currentMilestoneIndex 
-                            ? brandingConfig?.primary_color || ''
-                            : idx < currentMilestoneIndex 
-                              ? `${brandingConfig?.primary_color}80` || ''
-                              : ''
-                        }}
                       />
                     ))}
+                  </div>
+                  <div className="text-center mt-2">
+                    <span className="text-sm text-slate-500 dark:text-slate-400">
+                      Step {currentMilestoneIndex + 1} of {currentStep.milestones.length}
+                    </span>
                   </div>
                 </div>
               )}
               
-              <CardContent className="pt-4">
+              <CardContent className="pt-2">
                 {/* Milestone content */}
                 {milestone?.content && (
-                  <div className="mb-4">
+                  <div className="mb-6 text-center">
                     <RichTextPreview content={milestone.content} />
                   </div>
                 )}
@@ -782,16 +813,16 @@ export default function FlowPreview() {
                 {renderFormFields()}
               </CardContent>
               
-              {/* Footer with branding */}
+              {/* Enhanced footer */}
               {((brandingConfig?.footer_links && brandingConfig.footer_links.length > 0) || 
                 brandingConfig?.privacy_policy_url || 
                 brandingConfig?.terms_url) && (
-                <CardFooter className="flex justify-between border-t pt-4 text-xs text-muted-foreground">
+                <CardFooter className="flex justify-between border-t pt-4 text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50">
                   <div>
                     {brandingConfig?.footer_links?.map((link, idx) => (
                       <span key={idx}>
                         {idx > 0 && ' • '}
-                        <a href={link.url} className="hover:underline" target="_blank" rel="noopener noreferrer">
+                        <a href={link.url} className="hover:text-purple-600 transition-colors" target="_blank" rel="noopener noreferrer">
                           {link.text}
                         </a>
                       </span>
@@ -799,12 +830,12 @@ export default function FlowPreview() {
                   </div>
                   <div className="flex gap-3">
                     {brandingConfig?.privacy_policy_url && (
-                      <a href={brandingConfig.privacy_policy_url} className="hover:underline" target="_blank" rel="noopener noreferrer">
+                      <a href={brandingConfig.privacy_policy_url} className="hover:text-purple-600 transition-colors" target="_blank" rel="noopener noreferrer">
                         Privacy Policy
                       </a>
                     )}
                     {brandingConfig?.terms_url && (
-                      <a href={brandingConfig.terms_url} className="hover:underline" target="_blank" rel="noopener noreferrer">
+                      <a href={brandingConfig.terms_url} className="hover:text-purple-600 transition-colors" target="_blank" rel="noopener noreferrer">
                         Terms
                       </a>
                     )}

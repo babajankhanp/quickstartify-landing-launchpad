@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   ReactFlow,
@@ -14,53 +13,16 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { 
   Save, 
   Undo2, 
   Redo2, 
-  Trash2, 
   ZoomIn, 
   ZoomOut, 
-  Grid, 
-  Copy,
-  Layers,
-  MessageCircle,
-  ImageIcon,
-  Settings2,
-  Database,
-  TestTube,
-  Clock,
-  LayoutGrid,
   Loader2,
-  ArrowRight,
-  FileInput,
-  FileCheck,
-  FormInput,
-  BellRing,
-  Send,
-  User,
-  UserPlus,
-  ShieldCheck,
-  Video,
-  Timer,
-  Rocket,
-  Target,
-  Lightbulb,
-  Workflow,
-  Route,
-  Check,
-  PersonStanding,
-  Sparkles,
-  MessageSquare
+  Grid3X3,
+  Maximize2
 } from 'lucide-react';
 import { TooltipNode } from '@/components/flow-builder/nodes/TooltipNode';
 import { ModalNode } from '@/components/flow-builder/nodes/ModalNode';
@@ -71,7 +33,8 @@ import { DelayNode } from '@/components/flow-builder/nodes/DelayNode';
 import { ApiTriggerNode } from '@/components/flow-builder/nodes/ApiTriggerNode';
 import { ABSwitchNode } from '@/components/flow-builder/nodes/ABSwitchNode';
 import { NodeEditorModal } from '@/components/flow-builder/NodeEditorModal';
-import { FlowBuilderToolbar } from '@/components/flow-builder/FlowBuilderToolbar';
+import { EnhancedToolbar } from '@/components/flow-builder/EnhancedToolbar';
+import { EnhancedSidebar } from '@/components/flow-builder/EnhancedSidebar';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from "@/integrations/supabase/client";
@@ -291,9 +254,15 @@ const FlowBuilder = () => {
         
         if (flowError) throw flowError;
         
-        const typedFlow = flowData as unknown as Flow;
+        // Add missing properties to match Flow interface
+        const typedFlow = {
+          ...flowData,
+          name: flowData.title || flowData.name || 'Untitled Flow',
+          status: flowData.status || 'draft'
+        } as Flow;
+        
         setFlow(typedFlow);
-        setFlowName(typedFlow.title);
+        setFlowName(typedFlow.title || typedFlow.name);
         setFlowDescription(typedFlow.description || "");
         
         // Fetch flow steps
@@ -461,8 +430,10 @@ const FlowBuilder = () => {
         const { data: newFlow, error: flowError } = await supabase
           .from('flows')
           .insert({
+            name: flowName,
             title: flowName,
             description: flowDescription,
+            status: 'draft',
             is_draft: true,
             is_active: false,
             user_id: user.id,
@@ -491,6 +462,7 @@ const FlowBuilder = () => {
         const { error: updateError } = await supabase
           .from('flows')
           .update({
+            name: flowName,
             title: flowName,
             description: flowDescription,
             updated_at: new Date().toISOString()
@@ -585,15 +557,18 @@ const FlowBuilder = () => {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-quickstartify-purple" />
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-4" />
+          <p className="text-slate-600 dark:text-slate-400">Loading your flow...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <FlowBuilderToolbar 
+    <div className="h-screen flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
+      <EnhancedToolbar 
         flowName={flowName} 
         onFlowNameChange={setFlowName} 
         onSave={saveFlow}
@@ -601,182 +576,15 @@ const FlowBuilder = () => {
       />
       
       <div className="flex flex-1 overflow-hidden">
-        {/* Node palette */}
-        <div className="w-64 border-r p-4 overflow-y-auto bg-gray-50 dark:bg-gray-800">
-          <h3 className="text-lg font-semibold mb-4">Flow Nodes</h3>
-          
-          <div className="grid gap-2">
-            {/* Updated flow node tools with better usability labels */}
-            <div 
-              className="flow-node-item onboarding-node" 
-              draggable 
-              onDragStart={(event) => {
-                event.dataTransfer.setData('application/reactflow/type', 'modal');
-                event.dataTransfer.setData('application/reactflow/label', 'Welcome Screen');
-              }}
-            >
-              <Rocket className="h-4 w-4" />
-              <span>Welcome Screen</span>
-            </div>
-            
-            <div 
-              className="flow-node-item tooltip-node" 
-              draggable 
-              onDragStart={(event) => {
-                event.dataTransfer.setData('application/reactflow/type', 'tooltip');
-                event.dataTransfer.setData('application/reactflow/label', 'Feature Tooltip');
-              }}
-            >
-              <Lightbulb className="h-4 w-4" />
-              <span>Feature Tooltip</span>
-            </div>
-            
-            <div 
-              className="flow-node-item form-node" 
-              draggable 
-              onDragStart={(event) => {
-                event.dataTransfer.setData('application/reactflow/type', 'modal');
-                event.dataTransfer.setData('application/reactflow/label', 'User Survey');
-              }}
-            >
-              <FormInput className="h-4 w-4" />
-              <span>User Survey</span>
-            </div>
-
-            <div 
-              className="flow-node-item hotspot-node" 
-              draggable 
-              onDragStart={(event) => {
-                event.dataTransfer.setData('application/reactflow/type', 'hotspot');
-                event.dataTransfer.setData('application/reactflow/label', 'Feature Highlight');
-              }}
-            >
-              <Target className="h-4 w-4" />
-              <span>Feature Highlight</span>
-            </div>
-            
-            <div 
-              className="flow-node-item event-node" 
-              draggable 
-              onDragStart={(event) => {
-                event.dataTransfer.setData('application/reactflow/type', 'checklist');
-                event.dataTransfer.setData('application/reactflow/label', 'Progress Checklist');
-              }}
-            >
-              <Check className="h-4 w-4" />
-              <span>Progress Checklist</span>
-            </div>
-            
-            <div 
-              className="flow-node-item branch-node" 
-              draggable 
-              onDragStart={(event) => {
-                event.dataTransfer.setData('application/reactflow/type', 'branch');
-                event.dataTransfer.setData('application/reactflow/label', 'User Path Decision');
-              }}
-            >
-              <Route className="h-4 w-4" />
-              <span>User Path Decision</span>
-            </div>
-            
-            <div 
-              className="flow-node-item video-node" 
-              draggable 
-              onDragStart={(event) => {
-                event.dataTransfer.setData('application/reactflow/type', 'modal');
-                event.dataTransfer.setData('application/reactflow/label', 'Tutorial Video');
-              }}
-            >
-              <Video className="h-4 w-4" />
-              <span>Tutorial Video</span>
-            </div>
-            
-            <div 
-              className="flow-node-item delay-node" 
-              draggable 
-              onDragStart={(event) => {
-                event.dataTransfer.setData('application/reactflow/type', 'delay');
-                event.dataTransfer.setData('application/reactflow/label', 'Time Delay');
-              }}
-            >
-              <Timer className="h-4 w-4" />
-              <span>Time Delay</span>
-            </div>
-            
-            <div 
-              className="flow-node-item persona-node" 
-              draggable 
-              onDragStart={(event) => {
-                event.dataTransfer.setData('application/reactflow/type', 'modal');
-                event.dataTransfer.setData('application/reactflow/label', 'User Persona Path');
-              }}
-            >
-              <PersonStanding className="h-4 w-4" />
-              <span>User Persona Path</span>
-            </div>
-            
-            <div 
-              className="flow-node-item chat-node" 
-              draggable 
-              onDragStart={(event) => {
-                event.dataTransfer.setData('application/reactflow/type', 'modal');
-                event.dataTransfer.setData('application/reactflow/label', 'Chat Assistance');
-              }}
-            >
-              <MessageSquare className="h-4 w-4" />
-              <span>Chat Assistance</span>
-            </div>
-          </div>
-          
-          <Separator className="my-4" />
-          
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Flow Settings</h3>
-            
-            <div>
-              <Label htmlFor="flowDescription">Description</Label>
-              <Textarea 
-                id="flowDescription" 
-                value={flowDescription} 
-                onChange={(e) => setFlowDescription(e.target.value)}
-                placeholder="Enter flow description"
-                className="mt-1 h-24"
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <Label htmlFor="publishToggle">Publish Flow</Label>
-              <Switch id="publishToggle" />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="flowVersion">Version</Label>
-              <Select defaultValue="1">
-                <SelectTrigger>
-                  <SelectValue placeholder="Select version" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Version 1 (Current)</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button 
-              onClick={saveFlow} 
-              className="w-full mt-2 bg-quickstartify-purple hover:bg-quickstartify-purple/90"
-              disabled={saving}
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              {saving ? "Saving..." : "Save & Preview Flow"}
-            </Button>
-          </div>
-        </div>
+        <EnhancedSidebar 
+          flowDescription={flowDescription}
+          onFlowDescriptionChange={setFlowDescription}
+          onSave={saveFlow}
+          saving={saving}
+        />
         
         {/* Main flow editor */}
-        <div className="flex-1 overflow-hidden" ref={reactFlowWrapper}>
+        <div className="flex-1 overflow-hidden relative" ref={reactFlowWrapper}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -790,40 +598,54 @@ const FlowBuilder = () => {
             nodeTypes={nodeTypes}
             snapToGrid={true}
             snapGrid={[15, 15]}
-            className="bg-dot-pattern"
+            className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800"
             fitView
+            proOptions={{ hideAttribution: true }}
           >
-            <Controls />
-            <MiniMap />
-            <Background gap={15} size={1} />
+            <Controls 
+              className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg"
+            />
+            <MiniMap 
+              className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg"
+              nodeColor="#9b87f5"
+              maskColor="rgba(155, 135, 245, 0.1)"
+            />
+            <Background 
+              gap={20} 
+              size={1} 
+              color="#e2e8f0"
+              style={{ opacity: 0.5 }}
+            />
             
-            <Panel position="top-right">
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <Undo2 className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Redo2 className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm">
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm">
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  disabled={saving}
-                  onClick={saveFlow}
-                >
-                  {saving ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
+            <Panel position="top-right" className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800"
+              >
+                <Undo2 className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800"
+              >
+                <Redo2 className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800"
+              >
+                <Grid3X3 className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
             </Panel>
           </ReactFlow>
         </div>
@@ -835,8 +657,22 @@ const FlowBuilder = () => {
           node={selectedNode}
           isOpen={isEditorModalOpen}
           onClose={() => setIsEditorModalOpen(false)}
-          updateNodeData={(data) => updateNodeData(selectedNode.id, data)}
-          deleteNode={deleteNode}
+          updateNodeData={(data) => {
+            setNodes(nodes.map(node => {
+              if (node.id === selectedNode.id) {
+                return { ...node, data: { ...node.data, ...data } };
+              }
+              return node;
+            }));
+          }}
+          deleteNode={(nodeId) => {
+            setEdges(edges.filter(edge => edge.source !== nodeId && edge.target !== nodeId));
+            setNodes(nodes.filter(node => node.id !== nodeId));
+            if (selectedNode && selectedNode.id === nodeId) {
+              setSelectedNode(null);
+              setIsEditorModalOpen(false);
+            }
+          }}
         />
       )}
     </div>
